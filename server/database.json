@@ -1,0 +1,624 @@
+{
+  "organizations": [
+    {
+      "id": "org_1",
+      "name": "Aegis Defense Systems",
+      "code": "AEGIS",
+      "type": "Defense Contractor",
+      "employeeCount": 1250
+    },
+    {
+      "id": "org_2",
+      "name": "Vanguard Cyber Command",
+      "code": "VANGUARD",
+      "type": "Armed Forces Unit",
+      "employeeCount": 450
+    },
+    {
+      "id": "org_3",
+      "name": "Horizon Global Logistics",
+      "code": "HORIZON",
+      "type": "Enterprise Logistics",
+      "employeeCount": 3100
+    }
+  ],
+  "departments": [
+    {
+      "id": "dept_1",
+      "orgId": "org_1",
+      "name": "Tactical Cyber Ops",
+      "riskLevel": "Elevated"
+    },
+    {
+      "id": "dept_2",
+      "orgId": "org_1",
+      "name": "Engineering & Avionics",
+      "riskLevel": "Moderate"
+    },
+    {
+      "id": "dept_3",
+      "orgId": "org_1",
+      "name": "Field Logistics",
+      "riskLevel": "Stable"
+    },
+    {
+      "id": "dept_4",
+      "orgId": "org_2",
+      "name": "Intelligence & Recon",
+      "riskLevel": "High"
+    },
+    {
+      "id": "dept_5",
+      "orgId": "org_2",
+      "name": "Special Operations",
+      "riskLevel": "Elevated"
+    }
+  ],
+  "roles": [
+    "company_admin",
+    "user_employee",
+    "doctor"
+  ],
+  "users": [
+    {
+      "id": "usr_1",
+      "orgId": "org_1",
+      "deptId": "dept_1",
+      "name": "Officer John Vance",
+      "email": "john.vance@aegis-defense.com",
+      "role": "user_employee",
+      "title": "Senior Cyber Defense Officer",
+      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      "baseline": {
+        "normalStress": 3.5,
+        "normalWorkload": 5.8,
+        "normalSleepHours": 7.2,
+        "normalFatigue": 3
+      }
+    },
+    {
+      "id": "usr_2",
+      "orgId": "org_1",
+      "deptId": "dept_2",
+      "name": "Engineer Maya Lin",
+      "email": "maya.lin@aegis-defense.com",
+      "role": "user_employee",
+      "title": "Avionics Systems Architect",
+      "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
+      "baseline": {
+        "normalStress": 3,
+        "normalWorkload": 6.2,
+        "normalSleepHours": 7.5,
+        "normalFatigue": 2.8
+      }
+    },
+    {
+      "id": "usr_3",
+      "orgId": "org_1",
+      "deptId": "dept_1",
+      "name": "Cmdr. Alex Mercer",
+      "email": "alex.mercer@aegis-defense.com",
+      "role": "company_admin",
+      "title": "Director of Human Readiness & Security",
+      "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+      "baseline": null
+    },
+    {
+      "id": "usr_doc1",
+      "orgId": "org_1",
+      "deptId": null,
+      "name": "Dr. Sarah Connor, MD",
+      "email": "dr.connor@sentinel-medical.org",
+      "role": "doctor",
+      "title": "Chief Occupational Psychiatrist",
+      "specialty": "Combat Stress & High-Performance Burnout",
+      "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80",
+      "licenseNumber": "MD-883921-TACTICAL"
+    },
+    {
+      "id": "usr_doc2",
+      "orgId": "org_1",
+      "deptId": null,
+      "name": "Dr. Marcus Vance, PhD",
+      "email": "dr.marcus@sentinel-medical.org",
+      "role": "doctor",
+      "title": "Clinical Neuropsychologist",
+      "specialty": "Cognitive Readiness & Sleep Recovery",
+      "avatar": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80",
+      "licenseNumber": "PSY-449120-BEHAVIORAL"
+    }
+  ],
+  "consentRecords": [
+    {
+      "userId": "usr_1",
+      "shareWithCompanyAggregated": true,
+      "shareWithAssignedDoctorDetailed": true,
+      "allowEmergencyEscalation": true,
+      "allowWorkPatternAnalytics": true,
+      "updatedAt": "2026-09-01T10:00:00Z"
+    },
+    {
+      "userId": "usr_2",
+      "shareWithCompanyAggregated": true,
+      "shareWithAssignedDoctorDetailed": true,
+      "allowEmergencyEscalation": false,
+      "allowWorkPatternAnalytics": true,
+      "updatedAt": "2026-09-01T10:00:00Z"
+    }
+  ],
+  "wellbeingCheckins": [
+    {
+      "id": "chk_101",
+      "userId": "usr_1",
+      "date": "2026-08-25",
+      "stressLevel": 3,
+      "fatigue": 3,
+      "mood": 8,
+      "workload": 6,
+      "sleepHours": 7.5,
+      "sleepQuality": 8,
+      "motivation": 8,
+      "afterHoursWorkMinutes": 30,
+      "journal": "Normal tactical ops shift.",
+      "score": 24,
+      "level": "GREEN"
+    },
+    {
+      "id": "chk_102",
+      "userId": "usr_1",
+      "date": "2026-08-26",
+      "stressLevel": 4,
+      "fatigue": 3,
+      "mood": 7,
+      "workload": 6,
+      "sleepHours": 7,
+      "sleepQuality": 7,
+      "motivation": 8,
+      "afterHoursWorkMinutes": 45,
+      "journal": "Routine system maintenance completed.",
+      "score": 28,
+      "level": "GREEN"
+    },
+    {
+      "id": "chk_103",
+      "userId": "usr_1",
+      "date": "2026-08-27",
+      "stressLevel": 4,
+      "fatigue": 4,
+      "mood": 7,
+      "workload": 7,
+      "sleepHours": 7,
+      "sleepQuality": 7,
+      "motivation": 7,
+      "afterHoursWorkMinutes": 60,
+      "journal": "Increased cyber patrol frequency.",
+      "score": 32,
+      "level": "YELLOW"
+    },
+    {
+      "id": "chk_104",
+      "userId": "usr_1",
+      "date": "2026-08-28",
+      "stressLevel": 5,
+      "fatigue": 5,
+      "mood": 6,
+      "workload": 8,
+      "sleepHours": 6.5,
+      "sleepQuality": 6,
+      "motivation": 7,
+      "afterHoursWorkMinutes": 90,
+      "journal": "Complex threat analysis exercise.",
+      "score": 42,
+      "level": "YELLOW"
+    },
+    {
+      "id": "chk_105",
+      "userId": "usr_1",
+      "date": "2026-08-29",
+      "stressLevel": 5,
+      "fatigue": 5,
+      "mood": 6,
+      "workload": 8,
+      "sleepHours": 6,
+      "sleepQuality": 6,
+      "motivation": 6,
+      "afterHoursWorkMinutes": 110,
+      "journal": "Working late on intrusion logs.",
+      "score": 48,
+      "level": "YELLOW"
+    },
+    {
+      "id": "chk_106",
+      "userId": "usr_1",
+      "date": "2026-08-30",
+      "stressLevel": 6,
+      "fatigue": 6,
+      "mood": 5,
+      "workload": 8,
+      "sleepHours": 6,
+      "sleepQuality": 5,
+      "motivation": 6,
+      "afterHoursWorkMinutes": 120,
+      "journal": "Feeling persistent tension after night shifts.",
+      "score": 56,
+      "level": "YELLOW"
+    },
+    {
+      "id": "chk_107",
+      "userId": "usr_1",
+      "date": "2026-08-31",
+      "stressLevel": 6,
+      "fatigue": 6,
+      "mood": 5,
+      "workload": 9,
+      "sleepHours": 5.8,
+      "sleepQuality": 5,
+      "motivation": 5,
+      "afterHoursWorkMinutes": 150,
+      "journal": "High workload emergency deployment.",
+      "score": 62,
+      "level": "ORANGE"
+    },
+    {
+      "id": "chk_108",
+      "userId": "usr_1",
+      "date": "2026-09-01",
+      "stressLevel": 7,
+      "fatigue": 7,
+      "mood": 4,
+      "workload": 9,
+      "sleepHours": 5.5,
+      "sleepQuality": 5,
+      "motivation": 5,
+      "afterHoursWorkMinutes": 180,
+      "journal": "Sleep disturbed by constant alerts.",
+      "score": 68,
+      "level": "ORANGE"
+    },
+    {
+      "id": "chk_109",
+      "userId": "usr_1",
+      "date": "2026-09-02",
+      "stressLevel": 7,
+      "fatigue": 8,
+      "mood": 4,
+      "workload": 9,
+      "sleepHours": 5,
+      "sleepQuality": 4,
+      "motivation": 4,
+      "afterHoursWorkMinutes": 210,
+      "journal": "Tired and irritable during briefing.",
+      "score": 74,
+      "level": "ORANGE"
+    },
+    {
+      "id": "chk_110",
+      "userId": "usr_1",
+      "date": "2026-09-03",
+      "stressLevel": 8,
+      "fatigue": 8,
+      "mood": 3,
+      "workload": 10,
+      "sleepHours": 5,
+      "sleepQuality": 4,
+      "motivation": 4,
+      "afterHoursWorkMinutes": 240,
+      "journal": "Critical system patch deadline. Extreme exhaustion.",
+      "score": 79,
+      "level": "ORANGE"
+    },
+    {
+      "id": "chk_111",
+      "userId": "usr_1",
+      "date": "2026-09-04",
+      "stressLevel": 8,
+      "fatigue": 8,
+      "mood": 3,
+      "workload": 10,
+      "sleepHours": 4.8,
+      "sleepQuality": 3,
+      "motivation": 3,
+      "afterHoursWorkMinutes": 260,
+      "journal": "Barely rested. Brain feeling foggy.",
+      "score": 82,
+      "level": "RED"
+    },
+    {
+      "id": "chk_112",
+      "userId": "usr_1",
+      "date": "2026-09-05",
+      "stressLevel": 8,
+      "fatigue": 8,
+      "mood": 3,
+      "workload": 9,
+      "sleepHours": 5,
+      "sleepQuality": 4,
+      "motivation": 4,
+      "afterHoursWorkMinutes": 200,
+      "journal": "Continued high stress.",
+      "score": 80,
+      "level": "ORANGE"
+    },
+    {
+      "id": "chk_113",
+      "userId": "usr_1",
+      "date": "2026-09-06",
+      "stressLevel": 7,
+      "fatigue": 7,
+      "mood": 4,
+      "workload": 8,
+      "sleepHours": 5.5,
+      "sleepQuality": 5,
+      "motivation": 5,
+      "afterHoursWorkMinutes": 140,
+      "journal": "Slight recovery effort.",
+      "score": 72,
+      "level": "ORANGE"
+    },
+    {
+      "id": "chk_114",
+      "userId": "usr_1",
+      "date": "2026-09-07",
+      "stressLevel": 7,
+      "fatigue": 7,
+      "mood": 4,
+      "workload": 8,
+      "sleepHours": 5.8,
+      "sleepQuality": 5,
+      "motivation": 5,
+      "afterHoursWorkMinutes": 120,
+      "journal": "Requested medical advice.",
+      "score": 70,
+      "level": "ORANGE"
+    },
+    {
+      "id": "chk_201",
+      "userId": "usr_2",
+      "date": "2026-09-01",
+      "stressLevel": 3,
+      "fatigue": 3,
+      "mood": 8,
+      "workload": 6,
+      "sleepHours": 7.5,
+      "sleepQuality": 8,
+      "motivation": 8,
+      "afterHoursWorkMinutes": 20,
+      "journal": "Great team momentum in avionics testing.",
+      "score": 22,
+      "level": "GREEN"
+    },
+    {
+      "id": "chk_202",
+      "userId": "usr_2",
+      "date": "2026-09-04",
+      "stressLevel": 4,
+      "fatigue": 3,
+      "mood": 7,
+      "workload": 7,
+      "sleepHours": 7.2,
+      "sleepQuality": 7,
+      "motivation": 8,
+      "afterHoursWorkMinutes": 30,
+      "journal": "Minor bug hunt, feeling good.",
+      "score": 28,
+      "level": "GREEN"
+    },
+    {
+      "id": "chk_203",
+      "userId": "usr_2",
+      "date": "2026-09-07",
+      "stressLevel": 3,
+      "fatigue": 3,
+      "mood": 8,
+      "workload": 6,
+      "sleepHours": 7.8,
+      "sleepQuality": 8,
+      "motivation": 9,
+      "afterHoursWorkMinutes": 15,
+      "journal": "Well-rested after weekend rest.",
+      "score": 20,
+      "level": "GREEN"
+    }
+  ],
+  "doctorAssignments": [
+    {
+      "doctorId": "usr_doc1",
+      "userId": "usr_1",
+      "assignedAt": "2026-08-15T00:00:00Z",
+      "notes": "Assigned as primary behavioral physician for Tactical Cyber Ops."
+    },
+    {
+      "doctorId": "usr_doc2",
+      "userId": "usr_2",
+      "assignedAt": "2026-08-15T00:00:00Z",
+      "notes": "Assigned as primary physician for Avionics division."
+    }
+  ],
+  "consultations": [
+    {
+      "id": "cons_101",
+      "userId": "usr_1",
+      "doctorId": "usr_doc1",
+      "requestDate": "2026-09-07T14:30:00Z",
+      "status": "Requested",
+      "scheduledTime": "2026-09-09T10:00:00Z",
+      "reason": "Persistent fatigue, reduced sleep quality, and elevated workload stress over the past fortnight.",
+      "doctorNotes": "Pending initial review. High priority consultation due to Orange baseline risk indicator.",
+      "followUpAction": "Recommend sleep hygiene protocol and temporary reduction in night patrol shifts."
+    }
+  ],
+  "companyAlerts": [
+    {
+      "id": "alt_1",
+      "orgId": "org_1",
+      "deptId": "dept_1",
+      "severity": "ORANGE",
+      "message": "Tactical Cyber Ops department shows a 28% increase in 14-day average stress deviation and after-hours work.",
+      "createdAt": "2026-09-06T09:00:00Z",
+      "status": "Active"
+    },
+    {
+      "id": "alt_2",
+      "orgId": "org_1",
+      "deptId": "dept_4",
+      "severity": "YELLOW",
+      "message": "Intelligence & Recon division meeting load increased by 35% compared to historical baseline.",
+      "createdAt": "2026-09-05T11:20:00Z",
+      "status": "Acknowledged"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "log_1788861351042",
+      "timestamp": "2026-09-08T09:55:51.042Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788861350851",
+      "timestamp": "2026-09-08T09:55:50.851Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788861350417",
+      "timestamp": "2026-09-08T09:55:50.417Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788861350241",
+      "timestamp": "2026-09-08T09:55:50.241Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788861348197",
+      "timestamp": "2026-09-08T09:55:48.197Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788861348004",
+      "timestamp": "2026-09-08T09:55:48.004Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788861347534",
+      "timestamp": "2026-09-08T09:55:47.534Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788861347484",
+      "timestamp": "2026-09-08T09:55:47.484Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788861345503",
+      "timestamp": "2026-09-08T09:55:45.503Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788861345299",
+      "timestamp": "2026-09-08T09:55:45.299Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788861344298",
+      "timestamp": "2026-09-08T09:55:44.300Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788861344165",
+      "timestamp": "2026-09-08T09:55:44.165Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788861341819",
+      "timestamp": "2026-09-08T09:55:41.820Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788861341781",
+      "timestamp": "2026-09-08T09:55:41.781Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788861321117",
+      "timestamp": "2026-09-08T09:55:21.117Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788861321080",
+      "timestamp": "2026-09-08T09:55:21.080Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1",
+      "timestamp": "2026-09-07T14:31:00Z",
+      "actorId": "usr_1",
+      "action": "CREATE_CONSULTATION_REQUEST",
+      "targetId": "cons_101",
+      "details": "User requested doctor consultation with Dr. Sarah Connor."
+    },
+    {
+      "id": "log_2",
+      "timestamp": "2026-09-07T10:15:00Z",
+      "actorId": "usr_3",
+      "action": "VIEW_AGGREGATED_ANALYTICS",
+      "targetId": "org_1",
+      "details": "Org Admin viewed anonymized department risk statistics."
+    },
+    {
+      "id": "log_3",
+      "timestamp": "2026-09-07T09:00:00Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_PATIENT_CLINICAL_SUMMARY",
+      "targetId": "usr_1",
+      "details": "Doctor Connor accessed authorized longitudinal stress data for Officer John Vance."
+    }
+  ]
+}
