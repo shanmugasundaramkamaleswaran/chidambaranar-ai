@@ -2,15 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import http from 'http';
 import bcrypt from 'bcryptjs';
-import { createRequire } from 'module';
 import { Server } from 'socket.io';
 import { getDb, saveDb, addAuditLog, findOrganization } from './db.js';
 import { evaluateCheckinRisk, calculatePersonalBaseline } from './stressEngine.js';
 import { generateAiChatResponse, generateGeminiClinicalReport } from './aiAssistant.js';
 import { signToken, requireAuth, requireRole } from './auth.js';
-
-const require = createRequire(import.meta.url);
-const { getAbimanyuResponse } = require('../../backend_legacy/services/aiService.js');
+import { getAbimanyuResponse } from './abimanyu.js';
 
 const app = express();
 const server = http.createServer(app);
