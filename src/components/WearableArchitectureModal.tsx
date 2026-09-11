@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Cpu, ArrowDown, ShieldCheck, HeartPulse, Activity, Zap, CheckCircle2 } from 'lucide-react';
+import { getAuthHeader } from '../auth';
 
 interface WearableArchitectureModalProps {
     isOpen: boolean;
@@ -17,9 +18,8 @@ export const WearableArchitectureModal: React.FC<WearableArchitectureModalProps>
         try {
             const res = await fetch('/api/wearables/sync', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({
-                    userId: 'usr_1',
                     heartRateBpm: 78,
                     hrvMs: 42,
                     sleepDurationHours: 5.8,
@@ -89,7 +89,7 @@ export const WearableArchitectureModal: React.FC<WearableArchitectureModalProps>
 
                     {/* Layer 3 */}
                     <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-center">
-                        <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest font-bold">Layer 3: SENTINEL AI Stress & Personal Baseline Engine</span>
+                        <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest font-bold">Layer 3: CHIDAMBARANAR AI Stress & Personal Baseline Engine</span>
                         <p className="text-xs text-slate-300 mt-2">
                             Fused Multimodal Data + Software Signals → Personal Baseline Anomaly Score → Early Warning Escalation.
                         </p>

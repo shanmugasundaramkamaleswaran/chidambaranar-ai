@@ -108,10 +108,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSelectPortal, onOpen
             <section className="max-w-7xl mx-auto px-4">
                 <div className="text-center mb-12">
                     <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-                        How SENTINEL Works: Detects Deviation from Personal Baseline
+                        How CHIDAMBARANAR AI Works: Detects Deviation from Personal Baseline
                     </h2>
                     <p className="text-slate-400 text-sm mt-2 max-w-2xl mx-auto">
-                        Unlike static questionnaires, SENTINEL models individual baseline patterns to identify meaningful stress shifts.
+                        Unlike static questionnaires, CHIDAMBARANAR AI models individual baseline patterns to identify meaningful stress shifts.
                     </p>
                 </div>
 
@@ -250,7 +250,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSelectPortal, onOpen
                             </div>
 
                             <div className="mt-4 pt-4 border-t border-slate-800 text-[11px] text-slate-400 italic">
-                                Notice: SENTINEL provides early-warning risk estimation to recommend recovery protocols. It does NOT diagnose clinical mental illness.
+                                Notice: CHIDAMBARANAR AI provides early-warning risk estimation to recommend recovery protocols. It does NOT diagnose clinical mental illness.
                             </div>
                         </div>
 
@@ -268,7 +268,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSelectPortal, onOpen
                         </div>
                         <h2 className="text-2xl md:text-4xl font-bold text-white">Built for High-Trust Defense & Enterprise Operations</h2>
                         <p className="text-slate-300 text-sm mt-3 leading-relaxed">
-                            Mental health data requires strict confidentiality. SENTINEL is engineered with clear boundary enforcement between user privacy, clinical care, and organizational management.
+                            Mental health data requires strict confidentiality. CHIDAMBARANAR AI is engineered with clear boundary enforcement between user privacy, clinical care, and organizational management.
                         </p>
                     </div>
 

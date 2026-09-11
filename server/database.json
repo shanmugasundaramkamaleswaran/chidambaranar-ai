@@ -74,7 +74,9 @@
         "normalWorkload": 5.8,
         "normalSleepHours": 7.2,
         "normalFatigue": 3
-      }
+      },
+      "rbacRole": "USER",
+      "passwordHash": "$2b$10$EBpUm1slNkM0nLzre/PzX.HUqxstWhAwqbZlEd2VuJ6pCcwB7BxAS"
     },
     {
       "id": "usr_2",
@@ -90,7 +92,9 @@
         "normalWorkload": 6.2,
         "normalSleepHours": 7.5,
         "normalFatigue": 2.8
-      }
+      },
+      "rbacRole": "USER",
+      "passwordHash": "$2b$10$SAxYc7PISbvGK8qtE2Vu4OEHnztjP6fFQzswPugHSclWA.uTYMUMe"
     },
     {
       "id": "usr_3",
@@ -101,7 +105,9 @@
       "role": "company_admin",
       "title": "Director of Human Readiness & Security",
       "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-      "baseline": null
+      "baseline": null,
+      "rbacRole": "ORGANIZATION_OFFICER",
+      "passwordHash": "$2b$10$1jfukOC36QGovFydtKZ9HOs1dmS3upFS0uxtx2p46TR6r7gNp1VI2"
     },
     {
       "id": "usr_doc1",
@@ -113,7 +119,10 @@
       "title": "Chief Occupational Psychiatrist",
       "specialty": "Combat Stress & High-Performance Burnout",
       "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80",
-      "licenseNumber": "MD-883921-TACTICAL"
+      "licenseNumber": "MD-883921-TACTICAL",
+      "rbacRole": "PSYCHOLOGIST",
+      "passwordHash": "$2b$10$CoEoKVjJv0AxU9j/hCXCV.QnJEcFOcZfUiFn7w7G71FNiY83l7mJe",
+      "availabilityStatus": "AVAILABLE"
     },
     {
       "id": "usr_doc2",
@@ -125,7 +134,22 @@
       "title": "Clinical Neuropsychologist",
       "specialty": "Cognitive Readiness & Sleep Recovery",
       "avatar": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80",
-      "licenseNumber": "PSY-449120-BEHAVIORAL"
+      "licenseNumber": "PSY-449120-BEHAVIORAL",
+      "rbacRole": "PSYCHOLOGIST",
+      "passwordHash": "$2b$10$ozpjM6mhbmLQQSOyJvSJm.rER5OpF7CRcOJ4yELjHKuAyODzM8S4a"
+    },
+    {
+      "id": "usr_1789071989085",
+      "orgId": "org_1",
+      "deptId": null,
+      "name": "dfgh",
+      "email": "your@gmail.com",
+      "role": "user_employee",
+      "rbacRole": "USER",
+      "title": "Employee",
+      "avatar": null,
+      "baseline": null,
+      "passwordHash": "$2b$10$Z7y4emtcVfmf86uvM/0bq.QiXvBq0W7yUMDwkatiIwmhu/KA7Xl.u"
     }
   ],
   "consentRecords": [
@@ -436,6 +460,159 @@
   ],
   "consultations": [
     {
+      "id": "cons_1789093895239",
+      "userId": "usr_doc1",
+      "doctorId": "usr_doc1",
+      "status": "REQUESTED",
+      "requested_at": "2026-09-11T02:31:35.239Z",
+      "accepted_at": null,
+      "started_at": null,
+      "ended_at": null,
+      "duration": null,
+      "scheduledTime": null,
+      "reason": "Persistent operational fatigue, sleep pattern disruption, and acute workload stress.",
+      "doctorNotes": "Pending physician review.",
+      "followUpAction": "",
+      "created_at": "2026-09-11T02:31:35.239Z",
+      "updated_at": "2026-09-11T02:31:35.239Z"
+    },
+    {
+      "id": "cons_1789091908254",
+      "userId": "usr_doc1",
+      "doctorId": "usr_doc1",
+      "status": "REQUESTED",
+      "requested_at": "2026-09-11T01:58:28.254Z",
+      "accepted_at": null,
+      "started_at": null,
+      "ended_at": null,
+      "duration": null,
+      "scheduledTime": null,
+      "reason": "Persistent operational fatigue, sleep pattern disruption, and acute workload stress.",
+      "doctorNotes": "Pending physician review.",
+      "followUpAction": "",
+      "created_at": "2026-09-11T01:58:28.254Z",
+      "updated_at": "2026-09-11T01:58:28.254Z"
+    },
+    {
+      "id": "cons_1789091606505",
+      "userId": "usr_doc1",
+      "doctorId": "usr_doc2",
+      "status": "REQUESTED",
+      "requested_at": "2026-09-11T01:53:26.505Z",
+      "accepted_at": null,
+      "started_at": null,
+      "ended_at": null,
+      "duration": null,
+      "scheduledTime": null,
+      "reason": "Peer consultation request from Dr. Connor",
+      "doctorNotes": "Pending physician review.",
+      "followUpAction": "",
+      "created_at": "2026-09-11T01:53:26.505Z",
+      "updated_at": "2026-09-11T01:53:26.505Z"
+    },
+    {
+      "id": "cons_1789072209765",
+      "userId": "usr_1",
+      "doctorId": "usr_doc1",
+      "status": "REQUESTED",
+      "requested_at": "2026-09-10T20:30:09.765Z",
+      "accepted_at": null,
+      "started_at": null,
+      "ended_at": null,
+      "duration": null,
+      "scheduledTime": null,
+      "reason": "Persistent operational fatigue, sleep pattern disruption, and acute workload stress.",
+      "doctorNotes": "Pending physician review.",
+      "followUpAction": "",
+      "created_at": "2026-09-10T20:30:09.765Z",
+      "updated_at": "2026-09-10T20:30:09.765Z"
+    },
+    {
+      "id": "cons_1789071999092",
+      "userId": "usr_1789071989085",
+      "doctorId": "usr_doc1",
+      "status": "REQUESTED",
+      "requested_at": "2026-09-10T20:26:39.092Z",
+      "accepted_at": null,
+      "started_at": null,
+      "ended_at": null,
+      "duration": null,
+      "scheduledTime": null,
+      "reason": "Persistent operational fatigue, sleep pattern disruption, and acute workload stress.",
+      "doctorNotes": "Pending physician review.",
+      "followUpAction": "",
+      "created_at": "2026-09-10T20:26:39.092Z",
+      "updated_at": "2026-09-10T20:26:39.092Z"
+    },
+    {
+      "id": "cons_1789069830001",
+      "userId": "usr_3",
+      "doctorId": "usr_doc2",
+      "status": "REQUESTED",
+      "requested_at": "2026-09-10T19:50:30.001Z",
+      "accepted_at": null,
+      "started_at": null,
+      "ended_at": null,
+      "duration": null,
+      "scheduledTime": null,
+      "reason": "Persistent operational fatigue, sleep pattern disruption, and acute workload stress.",
+      "doctorNotes": "Pending physician review.",
+      "followUpAction": "",
+      "created_at": "2026-09-10T19:50:30.001Z",
+      "updated_at": "2026-09-10T19:50:30.001Z"
+    },
+    {
+      "id": "cons_1788931239570",
+      "userId": "usr_3",
+      "doctorId": "usr_doc1",
+      "status": "REQUESTED",
+      "requested_at": "2026-09-09T05:20:39.570Z",
+      "accepted_at": null,
+      "started_at": null,
+      "ended_at": null,
+      "duration": null,
+      "scheduledTime": null,
+      "reason": "Persistent operational fatigue, sleep pattern disruption, and acute workload stress.",
+      "doctorNotes": "Pending physician review.",
+      "followUpAction": "",
+      "created_at": "2026-09-09T05:20:39.570Z",
+      "updated_at": "2026-09-09T05:20:39.570Z"
+    },
+    {
+      "id": "cons_1788872443811",
+      "userId": "usr_1",
+      "doctorId": "usr_doc2",
+      "status": "REQUESTED",
+      "requested_at": "2026-09-08T13:00:43.811Z",
+      "accepted_at": null,
+      "started_at": null,
+      "ended_at": null,
+      "duration": null,
+      "scheduledTime": null,
+      "reason": "Persistent operational fatigue, sleep pattern disruption, and acute workload stress.",
+      "doctorNotes": "Pending physician review.",
+      "followUpAction": "",
+      "created_at": "2026-09-08T13:00:43.811Z",
+      "updated_at": "2026-09-08T13:00:43.811Z"
+    },
+    {
+      "id": "cons_1788872427695",
+      "userId": "usr_1",
+      "doctorId": "usr_doc1",
+      "status": "REQUESTED",
+      "requested_at": "2026-09-08T13:00:27.695Z",
+      "accepted_at": null,
+      "started_at": null,
+      "ended_at": null,
+      "duration": null,
+      "scheduledTime": null,
+      "reason": "Persistent operational fatigue, sleep pattern disruption, and acute workload stress.",
+      "doctorNotes": "Pending physician review.",
+      "followUpAction": "",
+      "created_at": "2026-09-08T13:00:27.695Z",
+      "updated_at": "2026-09-08T13:00:27.695Z"
+    },
+    {
       "id": "cons_101",
       "userId": "usr_1",
       "doctorId": "usr_doc1",
@@ -468,6 +645,1062 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": "log_1789094333300",
+      "timestamp": "2026-09-11T02:38:53.300Z",
+      "actorId": "usr_3",
+      "action": "VIEW_PERSONNEL_STRESS",
+      "targetId": "org_1",
+      "details": "Organization Officer fetched individual personnel stress data."
+    },
+    {
+      "id": "log_1789094333200",
+      "timestamp": "2026-09-11T02:38:53.200Z",
+      "actorId": "usr_3",
+      "action": "VIEW_PERSONNEL_STRESS",
+      "targetId": "org_1",
+      "details": "Organization Officer fetched individual personnel stress data."
+    },
+    {
+      "id": "log_1789094332871",
+      "timestamp": "2026-09-11T02:38:52.871Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789094332747",
+      "timestamp": "2026-09-11T02:38:52.747Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789094332512",
+      "timestamp": "2026-09-11T02:38:52.512Z",
+      "actorId": "usr_3",
+      "action": "ORG_OFFICER_LOGIN",
+      "targetId": "org_1",
+      "details": "Organization Officer Cmdr. Alex Mercer logged into Enterprise Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789093942434",
+      "timestamp": "2026-09-11T02:32:22.434Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_PATIENT_CLINICAL_PROFILE",
+      "targetId": "usr_1",
+      "details": "Psychologist viewed clinical profile for Officer John Vance."
+    },
+    {
+      "id": "log_1789093927154",
+      "timestamp": "2026-09-11T02:32:07.154Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_PATIENT_CLINICAL_PROFILE",
+      "targetId": "usr_1",
+      "details": "Psychologist viewed clinical profile for Officer John Vance."
+    },
+    {
+      "id": "log_1789093906761",
+      "timestamp": "2026-09-11T02:31:46.761Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789093905842",
+      "timestamp": "2026-09-11T02:31:45.842Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789093897818",
+      "timestamp": "2026-09-11T02:31:37.818Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789093895729",
+      "timestamp": "2026-09-11T02:31:35.729Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789093895273",
+      "timestamp": "2026-09-11T02:31:35.273Z",
+      "actorId": "usr_doc1",
+      "action": "CREATE_CONSULTATION_REQUEST",
+      "targetId": "cons_1789093895239",
+      "details": "Requested doctor consultation with doctor usr_doc1."
+    },
+    {
+      "id": "log_1789093888316",
+      "timestamp": "2026-09-11T02:31:28.316Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789093888191",
+      "timestamp": "2026-09-11T02:31:28.191Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789093888128",
+      "timestamp": "2026-09-11T02:31:28.128Z",
+      "actorId": "usr_doc1",
+      "action": "PSYCHOLOGIST_LOGIN",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD logged into Clinical Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789093863455",
+      "timestamp": "2026-09-11T02:31:03.456Z",
+      "actorId": "usr_1",
+      "action": "USER_LOGIN",
+      "targetId": "usr_1",
+      "details": "Employee Officer John Vance logged into Sentinel Officer Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789093851006",
+      "timestamp": "2026-09-11T02:30:51.006Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789093850757",
+      "timestamp": "2026-09-11T02:30:50.757Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789093849420",
+      "timestamp": "2026-09-11T02:30:49.420Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789093849394",
+      "timestamp": "2026-09-11T02:30:49.394Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789091973566",
+      "timestamp": "2026-09-11T01:59:33.566Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789091973524",
+      "timestamp": "2026-09-11T01:59:33.524Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789091973385",
+      "timestamp": "2026-09-11T01:59:33.385Z",
+      "actorId": "usr_3",
+      "action": "ORG_OFFICER_LOGIN",
+      "targetId": "org_1",
+      "details": "Organization Officer Cmdr. Alex Mercer logged into Enterprise Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789091964749",
+      "timestamp": "2026-09-11T01:59:24.749Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_PATIENT_CLINICAL_PROFILE",
+      "targetId": "usr_1",
+      "details": "Psychologist viewed clinical profile for Officer John Vance."
+    },
+    {
+      "id": "log_1789091936177",
+      "timestamp": "2026-09-11T01:58:56.177Z",
+      "actorId": "usr_doc1",
+      "action": "GENERATE_GEMINI_CLINICAL_REPORT",
+      "targetId": "usr_1",
+      "details": "Psychologist generated Gemini AI Structured Clinical Report for Officer Officer John Vance."
+    },
+    {
+      "id": "log_1789091924763",
+      "timestamp": "2026-09-11T01:58:44.763Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_PATIENT_CLINICAL_PROFILE",
+      "targetId": "usr_1",
+      "details": "Psychologist viewed clinical profile for Officer John Vance."
+    },
+    {
+      "id": "log_1789091913214",
+      "timestamp": "2026-09-11T01:58:33.214Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789091908628",
+      "timestamp": "2026-09-11T01:58:28.628Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789091908276",
+      "timestamp": "2026-09-11T01:58:28.276Z",
+      "actorId": "usr_doc1",
+      "action": "CREATE_CONSULTATION_REQUEST",
+      "targetId": "cons_1789091908254",
+      "details": "Requested doctor consultation with doctor usr_doc1."
+    },
+    {
+      "id": "log_1789091902829",
+      "timestamp": "2026-09-11T01:58:22.829Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789091902781",
+      "timestamp": "2026-09-11T01:58:22.781Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789091902698",
+      "timestamp": "2026-09-11T01:58:22.698Z",
+      "actorId": "usr_doc1",
+      "action": "PSYCHOLOGIST_LOGIN",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD logged into Clinical Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789091885297",
+      "timestamp": "2026-09-11T01:58:05.297Z",
+      "actorId": "usr_1",
+      "action": "USER_LOGIN",
+      "targetId": "usr_1",
+      "details": "Employee Officer John Vance logged into Sentinel Officer Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789091873841",
+      "timestamp": "2026-09-11T01:57:53.841Z",
+      "actorId": "usr_1",
+      "action": "USER_LOGIN",
+      "targetId": "usr_1",
+      "details": "Employee Officer John Vance logged into Sentinel Officer Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789091606508",
+      "timestamp": "2026-09-11T01:53:26.508Z",
+      "actorId": "usr_doc1",
+      "action": "CREATE_CONSULTATION_REQUEST",
+      "targetId": "cons_1789091606505",
+      "details": "Requested doctor consultation with doctor usr_doc2."
+    },
+    {
+      "id": "log_1789091606461",
+      "timestamp": "2026-09-11T01:53:26.461Z",
+      "actorId": "usr_doc1",
+      "action": "PSYCHOLOGIST_LOGIN",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD logged into Clinical Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789091576491",
+      "timestamp": "2026-09-11T01:52:56.491Z",
+      "actorId": "usr_doc1",
+      "action": "PSYCHOLOGIST_LOGIN",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD logged into Clinical Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789075115042",
+      "timestamp": "2026-09-10T21:18:35.042Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789075113767",
+      "timestamp": "2026-09-10T21:18:33.767Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789075112823",
+      "timestamp": "2026-09-10T21:18:32.823Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789075111010",
+      "timestamp": "2026-09-10T21:18:31.010Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789075110452",
+      "timestamp": "2026-09-10T21:18:30.452Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789075107904",
+      "timestamp": "2026-09-10T21:18:27.904Z",
+      "actorId": "usr_doc1",
+      "action": "UPDATE_AVAILABILITY",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD updated availability to AVAILABLE."
+    },
+    {
+      "id": "log_1789075107342",
+      "timestamp": "2026-09-10T21:18:27.342Z",
+      "actorId": "usr_doc1",
+      "action": "UPDATE_AVAILABILITY",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD updated availability to OFFLINE."
+    },
+    {
+      "id": "log_1789075106701",
+      "timestamp": "2026-09-10T21:18:26.701Z",
+      "actorId": "usr_doc1",
+      "action": "UPDATE_AVAILABILITY",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD updated availability to AVAILABLE."
+    },
+    {
+      "id": "log_1789075106053",
+      "timestamp": "2026-09-10T21:18:26.053Z",
+      "actorId": "usr_doc1",
+      "action": "UPDATE_AVAILABILITY",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD updated availability to BUSY."
+    },
+    {
+      "id": "log_1789075101783",
+      "timestamp": "2026-09-10T21:18:21.783Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789075101748",
+      "timestamp": "2026-09-10T21:18:21.748Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789075101726",
+      "timestamp": "2026-09-10T21:18:21.726Z",
+      "actorId": "usr_doc1",
+      "action": "PSYCHOLOGIST_LOGIN",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD logged into Clinical Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789075083043",
+      "timestamp": "2026-09-10T21:18:03.043Z",
+      "actorId": "usr_1",
+      "action": "USER_LOGIN",
+      "targetId": "usr_1",
+      "details": "Employee Officer John Vance logged into Sentinel Officer Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789074417775",
+      "timestamp": "2026-09-10T21:06:57.775Z",
+      "actorId": "usr_3",
+      "action": "ORG_OFFICER_LOGIN",
+      "targetId": "org_1",
+      "details": "Organization Officer Cmdr. Alex Mercer logged into Enterprise Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789074409979",
+      "timestamp": "2026-09-10T21:06:49.979Z",
+      "actorId": "usr_doc1",
+      "action": "PSYCHOLOGIST_LOGIN",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD logged into Clinical Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789074384948",
+      "timestamp": "2026-09-10T21:06:24.948Z",
+      "actorId": "usr_1",
+      "action": "USER_LOGIN",
+      "targetId": "usr_1",
+      "details": "Employee Officer John Vance logged into Sentinel Officer Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789072209791",
+      "timestamp": "2026-09-10T20:30:09.791Z",
+      "actorId": "usr_1",
+      "action": "CREATE_CONSULTATION_REQUEST",
+      "targetId": "cons_1789072209765",
+      "details": "Requested doctor consultation with doctor usr_doc1."
+    },
+    {
+      "id": "log_1789072197858",
+      "timestamp": "2026-09-10T20:29:57.858Z",
+      "actorId": "usr_1",
+      "action": "USER_LOGIN",
+      "targetId": "usr_1",
+      "details": "Employee Officer John Vance logged into Sentinel Officer Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789072190743",
+      "timestamp": "2026-09-10T20:29:50.743Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072190686",
+      "timestamp": "2026-09-10T20:29:50.686Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072190664",
+      "timestamp": "2026-09-10T20:29:50.664Z",
+      "actorId": "usr_doc1",
+      "action": "PSYCHOLOGIST_LOGIN",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD logged into Clinical Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789072182179",
+      "timestamp": "2026-09-10T20:29:42.179Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789072182133",
+      "timestamp": "2026-09-10T20:29:42.133Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789072108206",
+      "timestamp": "2026-09-10T20:28:28.206Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789072108149",
+      "timestamp": "2026-09-10T20:28:28.149Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789072108088",
+      "timestamp": "2026-09-10T20:28:28.088Z",
+      "actorId": "usr_3",
+      "action": "ORG_OFFICER_LOGIN",
+      "targetId": "org_1",
+      "details": "Organization Officer Cmdr. Alex Mercer logged into Enterprise Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789072074290",
+      "timestamp": "2026-09-10T20:27:54.290Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072072817",
+      "timestamp": "2026-09-10T20:27:52.817Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072072411",
+      "timestamp": "2026-09-10T20:27:52.411Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072072205",
+      "timestamp": "2026-09-10T20:27:52.205Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072070963",
+      "timestamp": "2026-09-10T20:27:50.963Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072070302",
+      "timestamp": "2026-09-10T20:27:50.302Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072061201",
+      "timestamp": "2026-09-10T20:27:41.201Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072060121",
+      "timestamp": "2026-09-10T20:27:40.121Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072058954",
+      "timestamp": "2026-09-10T20:27:38.954Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072055614",
+      "timestamp": "2026-09-10T20:27:35.614Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072055551",
+      "timestamp": "2026-09-10T20:27:35.551Z",
+      "actorId": "usr_doc1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_doc1",
+      "details": "Psychologist viewed list of 1 assigned patients."
+    },
+    {
+      "id": "log_1789072055515",
+      "timestamp": "2026-09-10T20:27:35.515Z",
+      "actorId": "usr_doc1",
+      "action": "PSYCHOLOGIST_LOGIN",
+      "targetId": "usr_doc1",
+      "details": "Psychologist Dr. Sarah Connor, MD logged into Clinical Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1789071999097",
+      "timestamp": "2026-09-10T20:26:39.097Z",
+      "actorId": "usr_1789071989085",
+      "action": "CREATE_CONSULTATION_REQUEST",
+      "targetId": "cons_1789071999092",
+      "details": "Requested doctor consultation with doctor usr_doc1."
+    },
+    {
+      "id": "log_1789071989091",
+      "timestamp": "2026-09-10T20:26:29.091Z",
+      "actorId": "usr_1789071989085",
+      "action": "USER_SIGNUP",
+      "targetId": "usr_1789071989085",
+      "details": "New employee dfgh registered for org Aegis Defense Systems."
+    },
+    {
+      "id": "log_1789069830023",
+      "timestamp": "2026-09-10T19:50:30.023Z",
+      "actorId": "usr_3",
+      "action": "CREATE_CONSULTATION_REQUEST",
+      "targetId": "cons_1789069830001",
+      "details": "Requested doctor consultation with doctor usr_doc2."
+    },
+    {
+      "id": "log_1789069821677",
+      "timestamp": "2026-09-10T19:50:21.677Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1789069821581",
+      "timestamp": "2026-09-10T19:50:21.581Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1789069820732",
+      "timestamp": "2026-09-10T19:50:20.732Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1789069820662",
+      "timestamp": "2026-09-10T19:50:20.662Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1789069818113",
+      "timestamp": "2026-09-10T19:50:18.113Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1789069817972",
+      "timestamp": "2026-09-10T19:50:17.972Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1789069809069",
+      "timestamp": "2026-09-10T19:50:09.069Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1789069808967",
+      "timestamp": "2026-09-10T19:50:08.967Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1789069808613",
+      "timestamp": "2026-09-10T19:50:08.613Z",
+      "actorId": "usr_3",
+      "action": "COMPANY_LOGIN",
+      "targetId": "org_1",
+      "details": "Company Administrator logged into Sentinel Enterprise Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1788934990510",
+      "timestamp": "2026-09-09T06:23:10.510Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788934990459",
+      "timestamp": "2026-09-09T06:23:10.459Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788934990376",
+      "timestamp": "2026-09-09T06:23:10.376Z",
+      "actorId": "usr_3",
+      "action": "COMPANY_LOGIN",
+      "targetId": "org_1",
+      "details": "Company Administrator logged into Sentinel Enterprise Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1788931512679",
+      "timestamp": "2026-09-09T05:25:12.679Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788931512602",
+      "timestamp": "2026-09-09T05:25:12.602Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788931479184",
+      "timestamp": "2026-09-09T05:24:39.184Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788931479080",
+      "timestamp": "2026-09-09T05:24:39.080Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788931477420",
+      "timestamp": "2026-09-09T05:24:37.420Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788931477384",
+      "timestamp": "2026-09-09T05:24:37.384Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788931242188",
+      "timestamp": "2026-09-09T05:20:42.188Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788931242099",
+      "timestamp": "2026-09-09T05:20:42.099Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788931239577",
+      "timestamp": "2026-09-09T05:20:39.577Z",
+      "actorId": "usr_3",
+      "action": "CREATE_CONSULTATION_REQUEST",
+      "targetId": "cons_1788931239570",
+      "details": "Requested doctor consultation with doctor usr_doc1."
+    },
+    {
+      "id": "log_1788931137522",
+      "timestamp": "2026-09-09T05:18:57.522Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788931137367",
+      "timestamp": "2026-09-09T05:18:57.367Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788931136935",
+      "timestamp": "2026-09-09T05:18:56.935Z",
+      "actorId": "usr_3",
+      "action": "COMPANY_LOGIN",
+      "targetId": "org_1",
+      "details": "Company Administrator logged into Sentinel Enterprise Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1788894961863",
+      "timestamp": "2026-09-08T19:16:01.863Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788894961791",
+      "timestamp": "2026-09-08T19:16:01.791Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788894960540",
+      "timestamp": "2026-09-08T19:16:00.540Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788894960509",
+      "timestamp": "2026-09-08T19:16:00.509Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788894941982",
+      "timestamp": "2026-09-08T19:15:41.982Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788894941894",
+      "timestamp": "2026-09-08T19:15:41.894Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788894932885",
+      "timestamp": "2026-09-08T19:15:32.885Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788894932855",
+      "timestamp": "2026-09-08T19:15:32.855Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788894929736",
+      "timestamp": "2026-09-08T19:15:29.736Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788894929688",
+      "timestamp": "2026-09-08T19:15:29.688Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788894924616",
+      "timestamp": "2026-09-08T19:15:24.616Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788894924586",
+      "timestamp": "2026-09-08T19:15:24.586Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788894920321",
+      "timestamp": "2026-09-08T19:15:20.321Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788894920300",
+      "timestamp": "2026-09-08T19:15:20.300Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788894908297",
+      "timestamp": "2026-09-08T19:15:08.297Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788894908254",
+      "timestamp": "2026-09-08T19:15:08.254Z",
+      "actorId": "usr_3",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_3",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788894898768",
+      "timestamp": "2026-09-08T19:14:58.768Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788894898665",
+      "timestamp": "2026-09-08T19:14:58.665Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Company Admin viewed organization-level aggregated analytics."
+    },
+    {
+      "id": "log_1788894898597",
+      "timestamp": "2026-09-08T19:14:58.597Z",
+      "actorId": "usr_3",
+      "action": "COMPANY_LOGIN",
+      "targetId": "org_1",
+      "details": "Company Administrator logged into Sentinel Enterprise Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1788872473717",
+      "timestamp": "2026-09-08T13:01:13.718Z",
+      "actorId": "usr_1",
+      "action": "USER_LOGIN",
+      "targetId": "usr_1",
+      "details": "User Officer John Vance logged into Sentinel Officer Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1788872446454",
+      "timestamp": "2026-09-08T13:00:46.454Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788872446331",
+      "timestamp": "2026-09-08T13:00:46.331Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788872443825",
+      "timestamp": "2026-09-08T13:00:43.825Z",
+      "actorId": "usr_1",
+      "action": "CREATE_CONSULTATION_REQUEST",
+      "targetId": "cons_1788872443811",
+      "details": "Requested doctor consultation with doctor usr_doc2."
+    },
+    {
+      "id": "log_1788872431968",
+      "timestamp": "2026-09-08T13:00:31.968Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788872431809",
+      "timestamp": "2026-09-08T13:00:31.809Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788872427716",
+      "timestamp": "2026-09-08T13:00:27.716Z",
+      "actorId": "usr_1",
+      "action": "CREATE_CONSULTATION_REQUEST",
+      "targetId": "cons_1788872427695",
+      "details": "Requested doctor consultation with doctor usr_doc1."
+    },
+    {
+      "id": "log_1788872380917",
+      "timestamp": "2026-09-08T12:59:40.917Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788872380758",
+      "timestamp": "2026-09-08T12:59:40.758Z",
+      "actorId": "usr_1",
+      "action": "VIEW_ASSIGNED_PATIENTS",
+      "targetId": "usr_1",
+      "details": "Doctor viewed list of 0 assigned patients."
+    },
+    {
+      "id": "log_1788872354582",
+      "timestamp": "2026-09-08T12:59:14.582Z",
+      "actorId": "usr_1",
+      "action": "USER_LOGIN",
+      "targetId": "usr_1",
+      "details": "User Officer John Vance logged into Sentinel Officer Portal (Aegis Defense Systems)."
+    },
+    {
+      "id": "log_1788865343748",
+      "timestamp": "2026-09-08T11:02:23.748Z",
+      "actorId": "usr_1",
+      "action": "USER_LOGIN",
+      "targetId": "usr_1",
+      "details": "User Officer John Vance logged into Sentinel Officer Portal (Aegis Defense Systems)."
+    },
     {
       "id": "log_1788861351042",
       "timestamp": "2026-09-08T09:55:51.042Z",
@@ -620,5 +1853,6 @@
       "targetId": "usr_1",
       "details": "Doctor Connor accessed authorized longitudinal stress data for Officer John Vance."
     }
-  ]
+  ],
+  "consultationNotes": []
 }

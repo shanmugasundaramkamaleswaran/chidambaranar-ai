@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, FileText, Lock, ShieldCheck } from 'lucide-react';
 import { AuditLog } from '../types';
+import { getAuthHeader } from '../auth';
 
 interface AuditLogModalProps {
     isOpen: boolean;
@@ -12,7 +13,9 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
 
     useEffect(() => {
         if (isOpen) {
-            fetch('/api/audit-logs')
+            fetch('/api/audit-logs', {
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+            })
                 .then(res => res.json())
                 .then(data => {
                     if (data.logs) setLogs(data.logs);

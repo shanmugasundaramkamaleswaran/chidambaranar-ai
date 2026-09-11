@@ -91,12 +91,42 @@ export interface DoctorAssignment {
     notes?: string;
 }
 
+export type ConsultationStatus =
+    | 'REQUESTED'
+    | 'ACCEPTED'
+    | 'REJECTED'
+    | 'WAITING'
+    | 'IN_PROGRESS'
+    | 'COMPLETED'
+    | 'CANCELLED'
+    | 'Requested'
+    | 'Accepted'
+    | 'Scheduled'
+    | 'Completed'
+    | 'Cancelled';
+
+export interface ConsultationNote {
+    id: string;
+    consultationId: string;
+    doctorId: string;
+    notes: string;
+    followUpRequired: boolean;
+    followUpDate?: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface Consultation {
     id: string;
     userId: string;
     doctorId: string;
-    requestDate: string;
-    status: 'Requested' | 'Accepted' | 'Scheduled' | 'Completed' | 'Cancelled';
+    status: ConsultationStatus;
+    requested_at?: string;
+    accepted_at?: string | null;
+    started_at?: string | null;
+    ended_at?: string | null;
+    duration?: number | string | null;
+    requestDate?: string;
     scheduledTime?: string | null;
     reason: string;
     doctorNotes?: string;
@@ -104,6 +134,24 @@ export interface Consultation {
     userName?: string;
     userTitle?: string;
     userAvatar?: string;
+    doctorName?: string;
+    doctorTitle?: string;
+    doctorAvatar?: string;
+    doctorSpecialty?: string;
+    notes?: ConsultationNote | null;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface Psychologist {
+    id: string;
+    name: string;
+    email: string;
+    title: string;
+    specialty: string;
+    avatar: string;
+    licenseNumber?: string;
+    availabilityStatus: 'AVAILABLE' | 'BUSY' | 'OFFLINE';
 }
 
 export interface CompanyAlert {

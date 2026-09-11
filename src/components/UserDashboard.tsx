@@ -1,17 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { User, WellbeingCheckin, RiskEvaluation } from '../types';
+import { io } from 'socket.io-client';
+import { User, WellbeingCheckin, RiskEvaluation, Organization, Consultation } from '../types';
 import { saveCheckinToCloudStorage } from '../firebase';
-import { ShieldAlert, Heart, Plus, Sparkles, CheckCircle2, Lock, Send } from 'lucide-react';
+import { ShieldAlert, Heart, Plus, Sparkles, CheckCircle2, Lock, Send, Building2, PhoneCall, Stethoscope, History, Phone } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { VoiceCallModal } from './VoiceCallModal';
+import { PsychologistSelectModal } from './PsychologistSelectModal';
+import { CallHistoryModal } from './CallHistoryModal';
+import { getAuthHeader } from '../auth';
 
 interface UserDashboardProps {
     user: User;
+    organization?: Organization | null;
     onRefreshData: () => void;
 }
 
-export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshData }) => {
+export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization, onRefreshData }) => {
     const [checkins, setCheckins] = useState<WellbeingCheckin[]>([]);
     const [latestEval, setLatestEval] = useState<RiskEvaluation | null>(null);
+
+    // Consultation & WebRTC Voice Call States
+    const [userConsultations, setUserConsultations] = useState<Consultation[]>([]);
+    const [activeCallConsultation, setActiveCallConsultation] = useState<Consultation | null>(null);
+    const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [incomingNotification, setIncomingNotification] = useState<{ consultationId: string; doctorName: string } | null>(null);
 
     // Daily Check-in Modal State
     const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
@@ -24,7 +37,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshDat
     // Chatbot Drawer State
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessages, setChatMessages] = useState<{ sender: 'user' | 'ai'; text: string; time: string }[]>([
-        { sender: 'ai', text: `Hello Officer ${user.name.split(' ')[0]}. I am your confidential SENTINEL AI assistant. How are you feeling after your shift today?`, time: '18:00' }
+        { sender: 'ai', text: `Hello Officer ${user.name.split(' ')[0]}. I am your confidential CHIDAMBARANAR AI assistant. How are you feeling after your shift today?`, time: '18:00' }
     ]);
     const [chatInput, setChatInput] = useState('');
 
@@ -36,13 +49,23 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshDat
     // Privacy Consent Toggle
     const [shareDetailedWithDoctor, setShareDetailedWithDoctor] = useState(user.shareWithDoctor ?? true);
 
-    // Fetch longitudinal data from server
+    // Fetch longitudinal data & consultations from server
     const fetchDashboardData = async () => {
         try {
-            const res = await fetch(`/api/checkins?userId=${user.id}`);
-            const data = await res.json();
-            if (data.checkins) setCheckins(data.checkins);
-            if (data.riskEval) setLatestEval(data.riskEval);
+            const headers = { 'Content-Type': 'application/json', ...getAuthHeader() };
+            const [checkinRes, consultRes] = await Promise.all([
+                fetch('/api/checkins', { headers }),
+                fetch('/api/consultations/user', { headers })
+            ]);
+
+            const checkinData = await checkinRes.json();
+            if (checkinData.checkins) setCheckins(checkinData.checkins);
+            if (checkinData.riskEval) setLatestEval(checkinData.riskEval);
+
+            if (consultRes.ok) {
+                const consultData = await consultRes.json();
+                setUserConsultations(consultData.consultations || []);
+            }
         } catch (err) {
             console.error('Error fetching dashboard data:', err);
         }
@@ -50,6 +73,26 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshDat
 
     useEffect(() => {
         fetchDashboardData();
+
+        // Socket.IO real-time notification listener
+        const socket = io(window.location.origin, { transports: ['websocket', 'polling'] });
+
+        socket.on('connect', () => {
+            socket.emit('user:register', { userId: user.id });
+        });
+
+        socket.on('consultation:accepted', ({ consultationId, doctorName }) => {
+            setIncomingNotification({ consultationId, doctorName });
+            fetchDashboardData();
+        });
+
+        socket.on('consultation:ready', ({ consultationId }) => {
+            fetchDashboardData();
+        });
+
+        return () => {
+            socket.disconnect();
+        };
     }, [user.id]);
 
     // Submit New Daily Check-In
@@ -69,7 +112,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshDat
             // 1. Submit to API server
             const res = await fetch('/api/checkins', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify(newCheckinPayload)
             });
             const data = await res.json();
@@ -102,8 +145,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshDat
         try {
             const res = await fetch('/api/ai/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, message: userMsg })
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ message: userMsg })
             });
             const data = await res.json();
             if (data.reply) {
@@ -121,11 +164,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshDat
 
         setIsRequestingDoctor(true);
         try {
-            const res = await fetch('/api/consultations', {
+            const res = await fetch('/api/consultations/request', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({
-                    userId: user.id,
                     doctorId: 'usr_doc1',
                     reason: consultReason
                 })
@@ -135,6 +177,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshDat
                 setConsultSuccess(true);
                 setConsultReason('');
                 setTimeout(() => setConsultSuccess(false), 5000);
+                fetchDashboardData();
             }
         } catch (err) {
             console.error('Consultation request error:', err);
@@ -148,10 +191,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshDat
         const nextVal = !shareDetailedWithDoctor;
         setShareDetailedWithDoctor(nextVal);
         try {
-            await fetch('/api/users/consent', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, shareWithDoctor: nextVal })
+            await fetch('/api/user/consent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ shareWithAssignedDoctorDetailed: nextVal })
             });
         } catch (err) {
             console.error('Error saving consent setting:', err);
@@ -198,20 +241,44 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshDat
                         </div>
                     )}
                     <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <h1 className="text-xl lg:text-2xl font-black text-white">{user.name}</h1>
                             <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-800">
                                 ACTIVE PERSONNEL
                             </span>
                         </div>
-                        <p className="text-xs text-slate-400 mt-0.5">{user.title} • Tactical Cyber Division</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{user.title}</p>
+                        {organization && (
+                            <div className="flex items-center gap-1.5 mt-1.5 text-[11px] font-mono">
+                                <Building2 className="w-3 h-3 text-cyan-400" />
+                                <span className="text-cyan-300 font-bold">{organization.name}</span>
+                                <span className="text-slate-500">·</span>
+                                <span className="text-slate-400">{organization.id} / {organization.code}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                     <button
+                        onClick={() => setIsSelectModalOpen(true)}
+                        className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs shadow-lg shadow-emerald-950/60 border border-emerald-400/30 transition-all hover:scale-[1.02]"
+                    >
+                        <PhoneCall className="w-4 h-4" />
+                        <span>Talk to Psychologist</span>
+                    </button>
+
+                    <button
+                        onClick={() => setIsHistoryModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs border border-slate-700 transition-all"
+                    >
+                        <History className="w-4 h-4 text-emerald-400" />
+                        <span>Call History</span>
+                    </button>
+
+                    <button
                         onClick={() => setIsCheckinModalOpen(true)}
-                        className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-600 to-sky-500 hover:from-cyan-500 hover:to-sky-400 text-white font-bold text-xs shadow-lg shadow-cyan-950/60 border border-cyan-400/30 transition-all hover:scale-[1.02]"
+                        className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 font-bold text-xs border border-cyan-800 transition-all"
                     >
                         <Plus className="w-4 h-4" />
                         <span>Daily Check-In</span>
@@ -226,6 +293,49 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshDat
                     </button>
                 </div>
             </div>
+
+            {/* REAL-TIME CALL ACCEPTED NOTIFICATION TOAST BANNER */}
+            {incomingNotification && (
+                <div className="p-5 rounded-3xl bg-emerald-950/90 border border-emerald-500/80 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center gap-3.5">
+                        <div className="p-3 rounded-2xl bg-emerald-500 text-slate-950 font-bold animate-bounce">
+                            <Phone className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-white">Psychologist Consultation Ready!</h4>
+                            <p className="text-xs text-emerald-200 mt-0.5">
+                                {incomingNotification.doctorName} accepted your voice consultation request.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                        <button
+                            onClick={() => setIncomingNotification(null)}
+                            className="px-3 py-2 rounded-xl bg-emerald-900/60 hover:bg-emerald-900 text-emerald-300 text-xs font-semibold"
+                        >
+                            Dismiss
+                        </button>
+                        <button
+                            onClick={() => {
+                                const cons = userConsultations.find(c => c.id === incomingNotification.consultationId) || {
+                                    id: incomingNotification.consultationId,
+                                    userId: user.id,
+                                    doctorId: 'usr_doc1',
+                                    status: 'ACCEPTED',
+                                    reason: 'Real-time Voice Consultation',
+                                    doctorName: incomingNotification.doctorName
+                                };
+                                setActiveCallConsultation(cons as Consultation);
+                                setIncomingNotification(null);
+                            }}
+                            className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-950 flex items-center gap-2"
+                        >
+                            <PhoneCall className="w-4 h-4" />
+                            <span>Join Voice Call Now</span>
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* RISK ESCALATION WARNING BANNER */}
             {latestEval && (
@@ -521,6 +631,40 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onRefreshDat
                         </button>
                     </form>
                 </div>
+            )}
+
+            {/* VOICE CALL MODAL */}
+            {activeCallConsultation && (
+                <VoiceCallModal
+                    consultation={activeCallConsultation}
+                    currentUser={user}
+                    onClose={() => setActiveCallConsultation(null)}
+                    onCallEnded={(duration) => {
+                        setActiveCallConsultation(null);
+                        fetchDashboardData();
+                    }}
+                />
+            )}
+
+            {/* SELECT PSYCHOLOGIST MODAL */}
+            {isSelectModalOpen && (
+                <PsychologistSelectModal
+                    currentUser={user}
+                    onClose={() => setIsSelectModalOpen(false)}
+                    onRequestSent={(newConsultation) => {
+                        setIsSelectModalOpen(false);
+                        fetchDashboardData();
+                    }}
+                />
+            )}
+
+            {/* CONSULTATION HISTORY MODAL */}
+            {isHistoryModalOpen && (
+                <CallHistoryModal
+                    consultations={userConsultations}
+                    currentUser={user}
+                    onClose={() => setIsHistoryModalOpen(false)}
+                />
             )}
 
         </div>

@@ -65,7 +65,8 @@ const initialData = {
             title: 'Chief Occupational Psychiatrist',
             specialty: 'Combat Stress & High-Performance Burnout',
             avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80',
-            licenseNumber: 'MD-883921-TACTICAL'
+            licenseNumber: 'MD-883921-TACTICAL',
+            availabilityStatus: 'AVAILABLE'
         },
         {
             id: 'usr_doc2',
@@ -77,7 +78,8 @@ const initialData = {
             title: 'Clinical Neuropsychologist',
             specialty: 'Cognitive Readiness & Sleep Recovery',
             avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80',
-            licenseNumber: 'PSY-449120-BEHAVIORAL'
+            licenseNumber: 'PSY-449120-BEHAVIORAL',
+            availabilityStatus: 'AVAILABLE'
         }
     ],
     consentRecords: [
@@ -130,11 +132,23 @@ const initialData = {
             userId: 'usr_1',
             doctorId: 'usr_doc1',
             requestDate: '2026-09-07T14:30:00Z',
-            status: 'Requested', // Requested, Accepted, Scheduled, Completed, Cancelled
+            status: 'REQUESTED', // REQUESTED, ACCEPTED, REJECTED, WAITING, IN_PROGRESS, COMPLETED, CANCELLED
             scheduledTime: '2026-09-09T10:00:00Z',
             reason: 'Persistent fatigue, reduced sleep quality, and elevated workload stress over the past fortnight.',
             doctorNotes: 'Pending initial review. High priority consultation due to Orange baseline risk indicator.',
             followUpAction: 'Recommend sleep hygiene protocol and temporary reduction in night patrol shifts.'
+        }
+    ],
+    consultationNotes: [
+        {
+            id: 'note_101',
+            consultationId: 'cons_101',
+            doctorId: 'usr_doc1',
+            notes: 'Patient reports high mental fatigue due to continuous night operations.',
+            followUpRequired: true,
+            followUpDate: '2026-09-15',
+            createdAt: '2026-09-07T15:00:00Z',
+            updatedAt: '2026-09-07T15:00:00Z'
         }
     ],
     companyAlerts: [
@@ -171,7 +185,10 @@ export function getDb() {
     }
     try {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
-        return JSON.parse(raw);
+        const data = JSON.parse(raw);
+        if (!data.consultations) data.consultations = [];
+        if (!data.consultationNotes) data.consultationNotes = [];
+        return data;
     } catch (err) {
         console.error('Error reading database file, re-initializing:', err);
         fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2), 'utf-8');
@@ -181,6 +198,17 @@ export function getDb() {
 
 export function saveDb(data) {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+export function findOrganization(orgIdOrCode) {
+    if (!orgIdOrCode) return null;
+    const db = getDb();
+    const query = orgIdOrCode.trim().toLowerCase();
+    return db.organizations.find(o =>
+        o.id.toLowerCase() === query ||
+        o.code.toLowerCase() === query ||
+        o.name.toLowerCase() === query
+    ) || null;
 }
 
 export function addAuditLog(actorId, action, targetId, details) {

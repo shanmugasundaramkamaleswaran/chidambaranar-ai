@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { User, Department, CompanyAlert } from '../types';
-import { Building2, Users, AlertTriangle, ShieldCheck, TrendingUp, EyeOff, Lock, Stethoscope, Sliders, CheckCircle2 } from 'lucide-react';
+import { User, Department, CompanyAlert, Organization } from '../types';
+import { Building2, Users, AlertTriangle, ShieldCheck, TrendingUp, EyeOff, Lock, Stethoscope, Sliders, CheckCircle2, Hash } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { getAuthHeader } from '../auth';
 
 interface CompanyDashboardProps {
     admin: User;
+    organization?: Organization | null;
 }
 
-export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ admin }) => {
+export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ admin, organization }) => {
     const [overview, setOverview] = useState<any>(null);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [alerts, setAlerts] = useState<CompanyAlert[]>([]);
+    const [personnelList, setPersonnelList] = useState<any[]>([]);
 
     // Policy Config state
     const [checkinFrequency, setCheckinFrequency] = useState('Daily');
@@ -19,20 +22,26 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ admin }) => 
 
     const fetchCompanyData = async () => {
         try {
+            const headers = { 'Content-Type': 'application/json', ...getAuthHeader() };
             // 1. Fetch company overview
-            const ovRes = await fetch(`/api/company/overview?orgId=${admin.orgId}`);
+            const ovRes = await fetch('/api/company/overview', { headers });
             const ovData = await ovRes.json();
             if (ovData.overview) setOverview(ovData.overview);
 
             // 2. Fetch department breakdown
-            const deptRes = await fetch(`/api/company/departments?orgId=${admin.orgId}`);
+            const deptRes = await fetch('/api/company/departments', { headers });
             const deptData = await deptRes.json();
             if (deptData.departments) setDepartments(deptData.departments);
 
             // 3. Fetch anonymized alerts
-            const altRes = await fetch(`/api/company/alerts?orgId=${admin.orgId}`);
+            const altRes = await fetch('/api/company/alerts', { headers });
             const altData = await altRes.json();
             if (altData.alerts) setAlerts(altData.alerts);
+
+            // 4. Fetch personnel stress data (Authorized Override)
+            const pRes = await fetch('/api/company/personnel-stress', { headers });
+            const pData = await pRes.json();
+            if (pData.personnel) setPersonnelList(pData.personnel);
         } catch (err) {
             console.error('Error fetching company dashboard data:', err);
         }
@@ -69,13 +78,21 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ admin }) => 
                         </div>
                     )}
                     <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <h1 className="text-xl lg:text-2xl font-black text-white">{admin.name}</h1>
                             <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-800">
                                 COMPANY ENTERPRISE PORTAL
                             </span>
                         </div>
-                        <p className="text-xs text-slate-400 mt-0.5">{admin.title} • {overview?.organizationName || 'Aegis Defense Systems'}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{admin.title} • {overview?.organizationName || organization?.name || 'Aegis Defense Systems'}</p>
+                        {organization && (
+                            <div className="flex items-center gap-1.5 mt-1.5 text-[11px] font-mono">
+                                <Hash className="w-3 h-3 text-amber-400" />
+                                <span className="text-amber-300 font-bold">Org ID: {organization.id}</span>
+                                <span className="text-slate-500">·</span>
+                                <span className="text-slate-400">{organization.code} · {organization.type}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -168,9 +185,9 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ admin }) => 
                                 </div>
                                 <div className="text-right font-mono">
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${d.riskLevel === 'High' ? 'bg-rose-950 text-rose-400 border border-rose-800' :
-                                            d.riskLevel === 'Elevated' ? 'bg-orange-950 text-orange-400 border border-orange-800' :
-                                                d.riskLevel === 'Moderate' ? 'bg-amber-950 text-amber-400 border border-amber-800' :
-                                                    'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                                        d.riskLevel === 'Elevated' ? 'bg-orange-950 text-orange-400 border border-orange-800' :
+                                            d.riskLevel === 'Moderate' ? 'bg-amber-950 text-amber-400 border border-amber-800' :
+                                                'bg-emerald-950 text-emerald-400 border border-emerald-800'
                                         }`}>
                                         {d.riskLevel.toUpperCase()}
                                     </span>
@@ -255,6 +272,52 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ admin }) => 
                     </div>
                 </div>
 
+            </div>
+
+            {/* AUTHORIZED OVERRIDE: INDIVIDUAL PERSONNEL STRESS (Requested by User) */}
+            <div className="p-6 rounded-3xl glass-panel border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="text-base font-bold text-white flex items-center gap-2">
+                            <Users className="w-5 h-5 text-amber-500" />
+                            Personnel Stress Roster
+                        </h3>
+                        <p className="text-xs text-slate-400">Monitoring authorized individual baseline deviations.</p>
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    {personnelList.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic py-4">No personnel data available.</p>
+                    ) : (
+                        personnelList.map(p => (
+                            <div key={p.id} className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    {p.avatar ? (
+                                        <img src={p.avatar} alt={p.name} className="w-10 h-10 rounded-full object-cover border border-slate-700" />
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-xs font-bold">
+                                            {p.name.charAt(0)}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-bold text-white text-sm">{p.name}</p>
+                                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${p.riskLevel === 'RED' ? 'bg-rose-950 text-rose-300 border-rose-800' :
+                                                    p.riskLevel === 'ORANGE' ? 'bg-orange-950 text-orange-300 border-orange-800' :
+                                                        p.riskLevel === 'YELLOW' ? 'bg-amber-950 text-amber-300 border-amber-800' :
+                                                            'bg-emerald-950 text-emerald-300 border-emerald-800'
+                                                }`}>
+                                                {p.riskLevel} RISK (Score: {p.riskScore})
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-slate-400">{p.title} | Last Checkin: {p.latestCheckinDate}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
 
         </div>
