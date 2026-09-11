@@ -646,6 +646,30 @@
   ],
   "auditLogs": [
     {
+      "id": "log_1789100107785",
+      "timestamp": "2026-09-11T04:15:07.785Z",
+      "actorId": "usr_3",
+      "action": "VIEW_PERSONNEL_STRESS",
+      "targetId": "org_1",
+      "details": "Organization Officer fetched individual personnel stress data."
+    },
+    {
+      "id": "log_1789100107638",
+      "timestamp": "2026-09-11T04:15:07.638Z",
+      "actorId": "usr_3",
+      "action": "VIEW_COMPANY_OVERVIEW",
+      "targetId": "org_1",
+      "details": "Organization Officer viewed aggregated analytics."
+    },
+    {
+      "id": "log_1789100107557",
+      "timestamp": "2026-09-11T04:15:07.557Z",
+      "actorId": "usr_3",
+      "action": "ORG_OFFICER_LOGIN",
+      "targetId": "org_1",
+      "details": "Organization Officer Cmdr. Alex Mercer logged into Enterprise Portal (Aegis Defense Systems)."
+    },
+    {
       "id": "log_1789097310701",
       "timestamp": "2026-09-11T03:28:30.701Z",
       "actorId": "usr_1",
