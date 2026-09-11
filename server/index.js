@@ -2,11 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import http from 'http';
 import bcrypt from 'bcryptjs';
+import { createRequire } from 'module';
 import { Server } from 'socket.io';
 import { getDb, saveDb, addAuditLog, findOrganization } from './db.js';
 import { evaluateCheckinRisk, calculatePersonalBaseline } from './stressEngine.js';
 import { generateAiChatResponse, generateGeminiClinicalReport } from './aiAssistant.js';
 import { signToken, requireAuth, requireRole } from './auth.js';
+
+const require = createRequire(import.meta.url);
+const { getAbimanyuResponse } = require('../backend/services/aiService.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -533,21 +537,17 @@ app.post('/api/consultations/request', requireAuth, requireRole([ROLES.USER, ROL
     res.json({ success: true, consultation: newConsultation });
 });
 
-// AI Chatbot — proxied to ABIMANYU AI Psychologist
-const ABIMANYU_URL = 'https://abimanyuai-1.onrender.com/chat';
-
+// AI Chatbot — uses the local Abimanyu backend implementation instead of the dead external URL
 app.post('/api/ai/chat', requireAuth, requireRole([ROLES.USER, ROLES.PSYCHOLOGIST]), async (req, res) => {
     const { message, messages } = req.body;
     const db = getDb();
 
-    // Build the message text
     let userMessage = message;
     if (!userMessage && Array.isArray(messages) && messages.length > 0) {
         userMessage = messages[messages.length - 1]?.content || messages[messages.length - 1]?.text || '';
     }
     if (!userMessage) return res.status(400).json({ error: 'No message provided.' });
 
-    // Optionally enrich with user's latest risk score for context
     const userId = req.user.id;
     let contextPrefix = '';
     try {
@@ -559,27 +559,17 @@ app.post('/api/ai/chat', requireAuth, requireRole([ROLES.USER, ROLES.PSYCHOLOGIS
     } catch (_) { }
 
     try {
-        const abimanyuRes = await fetch(ABIMANYU_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: contextPrefix + userMessage })
-        });
-
-        if (!abimanyuRes.ok) {
-            throw new Error(`ABIMANYU AI returned ${abimanyuRes.status}`);
-        }
-
-        const data = await abimanyuRes.json();
+        const aiResult = await getAbimanyuResponse(contextPrefix + userMessage, [], 'english');
         res.json({
-            reply: data.reply,
-            sentiment: data.sentiment || 'neutral',
-            mood: data.mood || 'calm',
-            audio: data.audio || null
+            reply: aiResult.responseText || aiResult.reply || 'I am here for you, warrior. Please tell me what troubles your heart.',
+            sentiment: 'neutral',
+            mood: aiResult.emotion || 'calm',
+            audio: null
         });
     } catch (err) {
-        console.error('ABIMANYU AI proxy error:', err.message);
+        console.error('Local ABIMANYU AI error:', err.message);
         res.json({
-            reply: "I'm here for you. Please take a deep breath — my connection was briefly interrupted. Please try again.",
+            reply: "I'm here for you. Please take a deep breath — the connection to my guidance was briefly interrupted. Please try again.",
             sentiment: 'neutral',
             mood: 'calm',
             audio: null
