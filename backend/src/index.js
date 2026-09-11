@@ -10,7 +10,7 @@ import { generateAiChatResponse, generateGeminiClinicalReport } from './aiAssist
 import { signToken, requireAuth, requireRole } from './auth.js';
 
 const require = createRequire(import.meta.url);
-const { getAbimanyuResponse } = require('../backend/services/aiService.js');
+const { getAbimanyuResponse } = require('../../backend_legacy/services/aiService.js');
 
 const app = express();
 const server = http.createServer(app);
