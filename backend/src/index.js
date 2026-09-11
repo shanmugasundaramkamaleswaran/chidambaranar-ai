@@ -23,6 +23,16 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+app.get('/', (req, res) => {
+    res.json({
+        success: true,
+        service: 'CHIDAMBARANAR AI Backend',
+        status: 'online',
+        message: 'Use the /api endpoints for authentication and application data.',
+        timestamp: new Date().toISOString()
+    });
+});
+
 // STUN / TURN server configuration structure
 const getIceServers = () => {
     return [

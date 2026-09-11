@@ -1,8 +1,6 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
-const { OpenAI } = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const axios = require('axios');
 const fs = require('fs').promises;
 const vectorService = require('./vectorService');
 
@@ -14,36 +12,16 @@ const FF_CACHE_LIMIT = 20;
 
 class AIService {
   constructor() {
-    this.openaiKey = process.env.OPENAI_API_KEY;
-    this.hfKey = process.env.HF_API_KEY;
     this.geminiKey = process.env.GEMINI_API_KEY;
-    this.mistralKey = process.env.MISTRAL_API_KEY;
-
-    if (this.openaiKey && !this.openaiKey.toLowerCase().includes('your_')) {
-      this.openaiClient = new OpenAI({ apiKey: this.openaiKey });
-    }
 
     if (this.geminiKey && !this.geminiKey.toLowerCase().includes('your_')) {
       this.genAI = new GoogleGenerativeAI(this.geminiKey);
     }
-
-    if (this.mistralKey && !this.mistralKey.toLowerCase().includes('your_')) {
-      // Mistral is OpenAI-compatible
-      this.mistralClient = new OpenAI({
-        apiKey: this.mistralKey,
-        baseURL: 'https://api.mistral.ai/v1'
-      });
-    }
-
-    this.hfEndpoint = 'https://router.huggingface.co/v1/chat/completions';
   }
 
   async getResponse(prompt, history = [], provider = 'gemini') {
-    // Priority: Gemini -> Mistral -> HuggingFace -> OpenAI
-    // Gemini is prioritized for better multilingual and persona depth
-    console.log(`[AI] Attempting response with provider order: Gemini -> Mistral -> HF -> OpenAI`);
+    console.log('[AI] Using Gemini only for Abimanyu responses.');
 
-    // 1. Try Gemini
     if (this.genAI) {
       console.log('[AI] Trying Google Gemini...');
       try {
@@ -53,37 +31,7 @@ class AIService {
       }
     }
 
-    // 2. Try Mistral
-    if (this.mistralClient) {
-      console.log('[AI] Trying Mistral AI...');
-      try {
-        return await this._getMistralResponse(prompt, history);
-      } catch (e) {
-        console.error('[AI] Mistral Error:', e.message);
-      }
-    }
-
-    // 3. Try Hugging Face
-    if (this.hfKey) {
-      console.log('[AI] Trying Hugging Face (Mistral-7B stable)...');
-      try {
-        return await this._getHFResponse(prompt, history);
-      } catch (e) {
-        console.error('[AI] HF Error:', e.message);
-      }
-    }
-
-    // 4. Try OpenAI
-    if (this.openaiClient) {
-      console.log('[AI] Trying OpenAI...');
-      try {
-        return await this._getOpenAIResponse(prompt, history);
-      } catch (e) {
-        console.error('[AI] OpenAI Error:', e.message);
-      }
-    }
-
-    throw new Error('No AI provider configured properly or all providers failed.');
+    throw new Error('Gemini API key is missing or invalid.');
   }
 
   async _getGeminiResponse(prompt, history) {
@@ -115,60 +63,6 @@ class AIService {
 
     const response = await result.response;
     return response.text().trim();
-  }
-
-  async _getMistralResponse(prompt, history) {
-    const messages = history.map(msg => ({ role: msg.role, content: msg.content }));
-    messages.push({ role: 'user', content: prompt });
-
-    const response = await this.mistralClient.chat.completions.create({
-      model: 'mistral-large-latest',
-      messages: messages,
-      max_tokens: 1000
-    });
-    return response.choices[0].message.content.trim();
-  }
-
-  async _getHFResponse(prompt, history) {
-    const messages = history.map(msg => ({ role: msg.role, content: msg.content }));
-    messages.push({ role: 'user', content: prompt });
-
-    // Using a more stable model for the router
-    const model = 'mistralai/Mistral-7B-Instruct-v0.3';
-
-    const response = await axios.post(
-      this.hfEndpoint,
-      {
-        model: model,
-        messages: messages,
-        max_tokens: 600,
-        temperature: 0.7
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${this.hfKey}`,
-          'x-wait-for-model': 'true'
-        },
-        timeout: 60000
-      }
-    );
-
-    if (response.data.choices && response.data.choices[0].message) {
-      return response.data.choices[0].message.content.trim();
-    }
-
-    return JSON.stringify(response.data);
-  }
-
-  async _getOpenAIResponse(prompt, history) {
-    const messages = history.map(msg => ({ role: msg.role, content: msg.content }));
-    messages.push({ role: 'user', content: prompt });
-
-    const response = await this.openaiClient.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: messages
-    });
-    return response.choices[0].message.content.trim();
   }
 
   /**
