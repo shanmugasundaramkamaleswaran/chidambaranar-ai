@@ -4,6 +4,8 @@ import { Mic, MicOff, PhoneOff, Shield, Activity, Lock, AlertCircle, Clock, Volu
 import { Consultation, User } from '../types';
 import { getAuthHeader } from '../auth';
 
+const AUDIO_CALL_URL = import.meta.env.VITE_AUDIO_CALL_URL || 'https://chidambaranar-ai-call-support.onrender.com';
+
 interface VoiceCallModalProps {
     consultation: Consultation;
     currentUser: User;
@@ -76,8 +78,9 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                 }
 
                 // 3. Connect to Socket.IO signaling server
-                const socket = io(window.location.origin, {
-                    transports: ['websocket', 'polling']
+                const socket = io(AUDIO_CALL_URL, {
+                    transports: ['websocket', 'polling'],
+                    autoConnect: true
                 });
                 socketRef.current = socket;
 

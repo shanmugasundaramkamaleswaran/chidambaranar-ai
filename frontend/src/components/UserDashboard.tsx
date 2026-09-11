@@ -170,7 +170,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({
                     doctorId: 'usr_doc1',
-                    reason: consultReason
+                    reason: consultReason,
+                    consultationType: 'audio'
                 })
             });
             const data = await res.json();
@@ -464,7 +465,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                         {consultSuccess && (
                             <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-700 text-xs text-emerald-300 flex items-center gap-2">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                <span>Consultation request submitted! Your assigned doctor will review and schedule an appointment.</span>
+                                <span>Calling Psychologist... Waiting for Psychologist to accept</span>
                             </div>
                         )}
 

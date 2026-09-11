@@ -202,9 +202,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
                             <PhoneCall className="w-6 h-6" />
                         </div>
                         <div>
-                            <h4 className="text-sm font-bold text-white">Incoming Consultation Request</h4>
+                            <h4 className="text-sm font-bold text-white">Incoming Audio Consultation</h4>
                             <p className="text-xs text-amber-200 mt-0.5">
-                                Officer {incomingCallRequest.userName} requested a confidential voice consultation.
+                                Officer {incomingCallRequest.userName} requested a confidential audio consultation.
                             </p>
                         </div>
                     </div>
@@ -232,7 +232,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
                             className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-950 flex items-center gap-2"
                         >
                             <PhoneCall className="w-4 h-4" />
-                            <span>Accept Consultation</span>
+                            <span>Accept Call</span>
                         </button>
                     </div>
                 </div>
@@ -336,30 +336,30 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
                                                         try {
                                                             await fetch(`/api/consultations/${c.id}/accept`, {
                                                                 method: 'POST',
-                                                                headers: { 'Content-Type': 'application/json' },
-                                                                body: JSON.stringify({ doctorId: doctor.id })
+                                                                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                                                                body: JSON.stringify({ doctorId: doctor.id, consultationType: 'audio' })
                                                             });
                                                             fetchDoctorData();
                                                         } catch (e) { console.error(e); }
                                                     }}
                                                     className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md"
                                                 >
-                                                    Accept
+                                                    Accept Call
                                                 </button>
                                                 <button
                                                     onClick={async () => {
                                                         try {
                                                             await fetch(`/api/consultations/${c.id}/reject`, {
                                                                 method: 'POST',
-                                                                headers: { 'Content-Type': 'application/json' },
-                                                                body: JSON.stringify({ doctorId: doctor.id })
+                                                                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                                                                body: JSON.stringify({ doctorId: doctor.id, reason: 'Rejected by psychologist' })
                                                             });
                                                             fetchDoctorData();
                                                         } catch (e) { console.error(e); }
                                                     }}
                                                     className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-semibold"
                                                 >
-                                                    Decline
+                                                    Reject Call
                                                 </button>
                                             </>
                                         )}

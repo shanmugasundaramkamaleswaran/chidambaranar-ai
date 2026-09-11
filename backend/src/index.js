@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { Server } from 'socket.io';
 import { getDb, saveDb, addAuditLog, findOrganization } from './db.js';
@@ -19,6 +20,9 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 5000;
+const AUDIO_CALL_SERVICE_URL = process.env.AUDIO_CALL_SERVICE_URL || 'https://chidambaranar-ai-call-support.onrender.com';
+
+const generateSecureRoomId = () => crypto.randomBytes(16).toString('hex');
 
 app.use(cors());
 app.use(express.json());
@@ -505,8 +509,12 @@ app.get('/api/consultations/user', requireAuth, requireRole([ROLES.USER, ROLES.P
 });
 
 app.post('/api/consultations/request', requireAuth, requireRole([ROLES.USER, ROLES.PSYCHOLOGIST]), (req, res) => {
-    const { doctorId, reason } = req.body;
+    const { doctorId, reason, consultationType = 'audio' } = req.body;
     const db = getDb();
+
+    if (consultationType && consultationType.toLowerCase() !== 'audio') {
+        return res.status(400).json({ success: false, error: 'Only audio consultations are supported for this service.' });
+    }
 
     const targetDocId = doctorId || 'usr_doc1';
     const uid = req.user.id;
@@ -517,6 +525,8 @@ app.post('/api/consultations/request', requireAuth, requireRole([ROLES.USER, ROL
         userId: uid,
         doctorId: targetDocId,
         status: 'REQUESTED',
+        consultationType: 'audio',
+        roomId: null,
         requested_at: now,
         accepted_at: null,
         started_at: null,
@@ -534,11 +544,12 @@ app.post('/api/consultations/request', requireAuth, requireRole([ROLES.USER, ROL
     saveDb(db);
 
     const user = db.users.find(u => u.id === uid);
-    addAuditLog(uid, 'CREATE_CONSULTATION_REQUEST', newConsultation.id, `Requested doctor consultation with doctor ${targetDocId}.`);
+    addAuditLog(uid, 'CREATE_CONSULTATION_REQUEST', newConsultation.id, `Requested audio consultation with doctor ${targetDocId}.`);
 
     io.to(`user_${targetDocId}`).emit('consultation:request', {
         consultation: newConsultation,
-        userName: user ? user.name : 'Officer'
+        userName: user ? user.name : 'Officer',
+        type: 'audio'
     });
 
     res.json({ success: true, consultation: newConsultation });
@@ -714,7 +725,7 @@ app.get('/api/consultations/psychologist', requireAuth, requireRole(ROLES.PSYCHO
     res.json({ consultations });
 });
 
-app.post('/api/consultations/:id/accept', requireAuth, requireRole(ROLES.PSYCHOLOGIST), (req, res) => {
+app.post('/api/consultations/:id/accept', requireAuth, requireRole(ROLES.PSYCHOLOGIST), async (req, res) => {
     const { id } = req.params;
     const db = getDb();
 
@@ -726,19 +737,44 @@ app.post('/api/consultations/:id/accept', requireAuth, requireRole(ROLES.PSYCHOL
     }
 
     cons.status = 'ACCEPTED';
+    cons.consultationType = cons.consultationType || 'audio';
+    cons.roomId = cons.roomId || generateSecureRoomId();
     cons.accepted_at = new Date().toISOString();
     cons.updated_at = new Date().toISOString();
     saveDb(db);
 
-    addAuditLog(req.user.id, 'ACCEPT_CONSULTATION', cons.id, `Accepted consultation request ${cons.id}.`);
+    addAuditLog(req.user.id, 'ACCEPT_CONSULTATION', cons.id, `Accepted audio consultation request ${cons.id}. Room: ${cons.roomId}.`);
 
     const doc = db.users.find(u => u.id === req.user.id);
     io.to(`user_${cons.userId}`).emit('consultation:accepted', {
         consultationId: cons.id,
-        doctorName: doc ? doc.name : 'Dr. Sarah Connor, MD'
+        doctorName: doc ? doc.name : 'Dr. Sarah Connor, MD',
+        roomId: cons.roomId,
+        audioCallUrl: AUDIO_CALL_SERVICE_URL,
+        consultationType: cons.consultationType
     });
 
-    res.json({ success: true, consultation: cons });
+    try {
+        await fetch(`${AUDIO_CALL_SERVICE_URL}/api/consultations/authorize`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-service': 'chidambaranar-main-backend'
+            },
+            body: JSON.stringify({
+                consultationId: cons.id,
+                userId: cons.userId,
+                psychologistId: cons.doctorId,
+                roomId: cons.roomId,
+                consultationType: 'audio',
+                status: 'ACCEPTED'
+            })
+        });
+    } catch (err) {
+        console.warn('Audio service callback failed, continuing with local consultation flow:', err.message);
+    }
+
+    res.json({ success: true, consultation: cons, audioCallUrl: AUDIO_CALL_SERVICE_URL, roomId: cons.roomId });
 });
 
 app.post('/api/consultations/:id/reject', requireAuth, requireRole(ROLES.PSYCHOLOGIST), (req, res) => {
@@ -1034,21 +1070,28 @@ app.post('/api/calls/:consultationId/join', requireAuth, (req, res) => {
 
     const requesterId = req.user.id;
     if (requesterId !== cons.userId && requesterId !== cons.doctorId) {
-        return res.status(403).json({ error: 'Unauthorized: You are not a participant of this consultation session.' });
+        return res.status(403).json({ error: '403 Forbidden: You are not authorized for this consultation.' });
     }
 
-    if (cons.status === 'REJECTED' || cons.status === 'CANCELLED') {
-        return res.status(400).json({ error: 'Consultation is no longer active.' });
+    if (cons.status !== 'ACCEPTED' && cons.status !== 'IN_PROGRESS') {
+        return res.status(403).json({ error: '403 Forbidden: Audio consultation is not yet accepted by the psychologist.' });
     }
 
-    const roomToken = `room_${consultationId}`;
+    if (cons.consultationType && cons.consultationType.toLowerCase() !== 'audio') {
+        return res.status(400).json({ error: 'This consultation is not configured for audio calling.' });
+    }
+
+    const roomToken = cons.roomId || `room_${consultationId}`;
     addAuditLog(requesterId, 'JOIN_CALL_SESSION', consultationId, `Participant ${requesterId} authorized to join confidential room ${roomToken}.`);
 
     res.json({
         success: true,
         consultation: cons,
         room: roomToken,
-        iceServers: getIceServers()
+        roomId: roomToken,
+        audioCallUrl: AUDIO_CALL_SERVICE_URL,
+        iceServers: getIceServers(),
+        consultationType: 'audio'
     });
 });
 

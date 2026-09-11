@@ -60,7 +60,8 @@ export const PsychologistSelectModal: React.FC<PsychologistSelectModalProps> = (
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({
                     doctorId: selectedDocId,
-                    reason
+                    reason,
+                    consultationType: 'audio'
                 })
             });
 
