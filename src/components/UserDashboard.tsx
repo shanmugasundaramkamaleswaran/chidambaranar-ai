@@ -36,8 +36,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
 
     // Chatbot Drawer State
     const [isChatOpen, setIsChatOpen] = useState(false);
-    const [chatMessages, setChatMessages] = useState<{ sender: 'user' | 'ai'; text: string; time: string }[]>([
-        { sender: 'ai', text: `Hello Officer ${user.name.split(' ')[0]}. I am your confidential CHIDAMBARANAR AI assistant. How are you feeling after your shift today?`, time: '18:00' }
+    const [chatMessages, setChatMessages] = useState<{ sender: 'user' | 'ai'; text: string; time: string; mood?: string; sentiment?: string }[]>([
+        { sender: 'ai', text: `Hello Officer ${user.name.split(' ')[0]}. I am ABIMANYU — your AI psychological support system. How are you feeling after your shift today?`, time: '18:00' }
     ]);
     const [chatInput, setChatInput] = useState('');
 
@@ -133,7 +133,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
         }
     };
 
-    // Send Message to AI Assistant Chatbot
+    // Send Message to AI Assistant Chatbot (powered by ABIMANYU AI)
     const handleSendChatMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!chatInput.trim()) return;
@@ -149,11 +149,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                 body: JSON.stringify({ message: userMsg })
             });
             const data = await res.json();
-            if (data.reply) {
-                setChatMessages(prev => [...prev, { sender: 'ai', text: data.reply, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-            }
+            const replyText = data.reply || data.response || "I'm here to help. Please try again.";
+            const moodTag = data.mood ? ` [${data.mood}]` : '';
+            setChatMessages(prev => [...prev, { sender: 'ai', text: replyText, mood: data.mood, sentiment: data.sentiment, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
         } catch (err) {
             console.error('Chat error:', err);
+            setChatMessages(prev => [...prev, { sender: 'ai', text: "Connection to ABIMANYU AI lost. Please try again shortly.", time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
         }
     };
 
@@ -599,8 +600,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                     <div className="space-y-4">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                             <div className="flex items-center gap-2">
-                                <Sparkles className="w-5 h-5 text-cyan-400" />
-                                <h3 className="font-bold text-white text-sm">SENTINEL AI Assistant</h3>
+                                <Sparkles className="w-5 h-5 text-purple-400" />
+                                <div>
+                                    <h3 className="font-bold text-white text-sm">ABIMANYU AI Psychologist</h3>
+                                    <p className="text-[10px] text-purple-400 font-mono">AI-powered psychological support</p>
+                                </div>
                             </div>
                             <button onClick={() => setIsChatOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
                         </div>
@@ -608,9 +612,23 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                         <div className="space-y-3 h-[68vh] overflow-y-auto pr-1">
                             {chatMessages.map((m, i) => (
                                 <div key={i} className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}>
-                                    <div className={`p-3 rounded-2xl text-xs max-w-[85%] ${m.sender === 'user' ? 'bg-cyan-600 text-white rounded-br-none' : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none'
-                                        }`}>
+                                    <div className={`p-3 rounded-2xl text-xs max-w-[85%] ${m.sender === 'user' ? 'bg-cyan-600 text-white rounded-br-none' : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none'}`}>
                                         {m.text}
+                                        {m.sender === 'ai' && m.mood && (
+                                            <div className="mt-2 flex gap-1.5 flex-wrap">
+                                                <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-800">
+                                                    🧠 {m.mood}
+                                                </span>
+                                                {m.sentiment && (
+                                                    <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border ${m.sentiment === 'positive' ? 'bg-emerald-950 text-emerald-300 border-emerald-800' :
+                                                            m.sentiment === 'negative' ? 'bg-rose-950 text-rose-300 border-rose-800' :
+                                                                'bg-slate-800 text-slate-400 border-slate-700'
+                                                        }`}>
+                                                        {m.sentiment}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                     <span className="text-[9px] text-slate-500 mt-1 font-mono">{m.time}</span>
                                 </div>
@@ -623,10 +641,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                             type="text"
                             value={chatInput}
                             onChange={e => setChatInput(e.target.value)}
-                            placeholder="Ask for relaxation guidance..."
-                            className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                            placeholder="Talk to ABIMANYU AI..."
+                            className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
                         />
-                        <button type="submit" className="p-2.5 rounded-xl bg-cyan-600 text-white font-bold text-xs">
+                        <button type="submit" className="p-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs transition-colors">
                             <Send className="w-4 h-4" />
                         </button>
                     </form>

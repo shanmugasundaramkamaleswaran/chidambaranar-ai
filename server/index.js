@@ -533,11 +533,58 @@ app.post('/api/consultations/request', requireAuth, requireRole([ROLES.USER, ROL
     res.json({ success: true, consultation: newConsultation });
 });
 
-// AI Chatbot - USER only
-app.post('/api/ai/chat', requireAuth, requireRole(ROLES.USER), (req, res) => {
-    const { messages, userContext } = req.body;
-    const aiResponse = generateAiChatResponse(messages || [], userContext || {});
-    res.json({ response: aiResponse });
+// AI Chatbot — proxied to ABIMANYU AI Psychologist
+const ABIMANYU_URL = 'https://abimanyuai-1.onrender.com/chat';
+
+app.post('/api/ai/chat', requireAuth, requireRole([ROLES.USER, ROLES.PSYCHOLOGIST]), async (req, res) => {
+    const { message, messages } = req.body;
+    const db = getDb();
+
+    // Build the message text
+    let userMessage = message;
+    if (!userMessage && Array.isArray(messages) && messages.length > 0) {
+        userMessage = messages[messages.length - 1]?.content || messages[messages.length - 1]?.text || '';
+    }
+    if (!userMessage) return res.status(400).json({ error: 'No message provided.' });
+
+    // Optionally enrich with user's latest risk score for context
+    const userId = req.user.id;
+    let contextPrefix = '';
+    try {
+        const user = db.users.find(u => u.id === userId);
+        const checkins = db.wellbeingCheckins.filter(c => c.userId === userId);
+        const latest = checkins[checkins.length - 1] || {};
+        const risk = evaluateCheckinRisk(latest, checkins, user?.baseline);
+        contextPrefix = `[User: ${user?.name || 'Officer'} | Stress: ${risk.level} ${risk.score}/100] `;
+    } catch (_) { }
+
+    try {
+        const abimanyuRes = await fetch(ABIMANYU_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: contextPrefix + userMessage })
+        });
+
+        if (!abimanyuRes.ok) {
+            throw new Error(`ABIMANYU AI returned ${abimanyuRes.status}`);
+        }
+
+        const data = await abimanyuRes.json();
+        res.json({
+            reply: data.reply,
+            sentiment: data.sentiment || 'neutral',
+            mood: data.mood || 'calm',
+            audio: data.audio || null
+        });
+    } catch (err) {
+        console.error('ABIMANYU AI proxy error:', err.message);
+        res.json({
+            reply: "I'm here for you. Please take a deep breath — my connection was briefly interrupted. Please try again.",
+            sentiment: 'neutral',
+            mood: 'calm',
+            audio: null
+        });
+    }
 });
 
 // Wearable sync - USER only
