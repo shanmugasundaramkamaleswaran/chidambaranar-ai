@@ -97,7 +97,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
         });
 
         socket.on('consultation:request', (data) => {
-            setIncomingCallRequest(data);
+            const normalized = {
+                ...data,
+                consultationId: data?.consultation?.id || data?.consultationId,
+                userName: data?.userName || data?.fromName || data?.consultation?.userName || 'Officer',
+                reason: data?.reason || data?.consultation?.reason || 'Confidential audio consultation request'
+            };
+            setIncomingCallRequest(normalized);
             fetchDoctorData();
         });
 
@@ -218,12 +224,25 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
                         <button
                             onClick={async () => {
                                 try {
-                                    await fetch(`/api/consultations/${incomingCallRequest.consultationId}/accept`, {
+                                    const consultationId = incomingCallRequest?.consultationId || incomingCallRequest?.consultation?.id;
+                                    if (!consultationId) {
+                                        console.error('Missing consultationId for incoming request:', incomingCallRequest);
+                                        return;
+                                    }
+
+                                    const res = await fetch(`/api/consultations/${consultationId}/accept`, {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                                         body: JSON.stringify({})
                                     });
-                                    setIncomingCallRequest(null);
+
+                                    if (res.ok) {
+                                        const accepted = await res.json();
+                                        const activeConsultation = accepted?.consultation || { ...incomingCallRequest.consultation, id: consultationId };
+                                        setIncomingCallRequest(null);
+                                        setActiveCallConsultation(activeConsultation as Consultation);
+                                    }
+
                                     fetchDoctorData();
                                 } catch (e) {
                                     console.error(e);

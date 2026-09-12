@@ -81,8 +81,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
             socket.emit('user:register', { userId: user.id });
         });
 
-        socket.on('consultation:accepted', ({ consultationId, doctorName }) => {
+        socket.on('consultation:accepted', ({ consultationId, doctorName, roomId }) => {
             setIncomingNotification({ consultationId, doctorName });
+            const matchingConsultation = userConsultations.find(c => c.id === consultationId);
+            if (matchingConsultation) {
+                setActiveCallConsultation({ ...matchingConsultation, status: 'ACCEPTED' } as Consultation);
+            }
             fetchDashboardData();
         });
 
