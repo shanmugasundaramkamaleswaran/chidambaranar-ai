@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { Mic, MicOff, PhoneOff, Shield, Activity, Lock, AlertCircle, Clock, Volume2, UserCheck, ChevronRight, X, FileText, HeartPulse } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Room, RoomEvent, TokenSource, Track } from 'livekit-client';
+import { Mic, MicOff, PhoneOff, Shield, Activity, Lock, AlertCircle, Clock, Volume2, ChevronRight, X, HeartPulse } from 'lucide-react';
 import { Consultation, User } from '../types';
 import { getAuthHeader } from '../auth';
 
-const AUDIO_CALL_URL = import.meta.env.VITE_AUDIO_CALL_URL || 'https://chidambaranar-ai-call-support.onrender.com';
+const LIVEKIT_URL = (import.meta.env.VITE_LIVEKIT_URL ?? '').trim();
+const LIVEKIT_TOKEN_SERVER_ID = (import.meta.env.VITE_LIVEKIT_TOKEN_SERVER_ID ?? '').trim();
 
 interface VoiceCallModalProps {
     consultation: Consultation;
@@ -19,20 +20,19 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
     onClose,
     onCallEnded
 }) => {
-    const [callState, setCallState] = useState<'CONNECTING' | 'CONNECTED' | 'RECONNECTING' | 'FAILED' | 'CLOSED'>('CONNECTING');
+    const [callState, setCallState] = useState<'CONNECTING' | 'CONNECTED' | 'FAILED' | 'CLOSED'>('CONNECTING');
     const [isMuted, setIsMuted] = useState(false);
-    const [peerIsMuted, setPeerIsMuted] = useState(false);
     const [durationSeconds, setDurationSeconds] = useState(0);
     const [showConfirmEnd, setShowConfirmEnd] = useState(false);
     const [showClinicalPanel, setShowClinicalPanel] = useState(false);
     const [connectionQuality, setConnectionQuality] = useState<'Excellent' | 'Good' | 'Fair'>('Excellent');
     const [micPermissionDenied, setMicPermissionDenied] = useState(false);
+    const [participantStatus, setParticipantStatus] = useState('Waiting for participant...');
+    const [statusMessage, setStatusMessage] = useState('Connecting to LiveKit room...');
+    const [errorMessage, setErrorMessage] = useState('');
 
-    const socketRef = useRef<Socket | null>(null);
-    const pcRef = useRef<RTCPeerConnection | null>(null);
-    const localStreamRef = useRef<MediaStream | null>(null);
-    const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const roomRef = useRef<Room | null>(null);
+    const timerRef = useRef<number | null>(null);
 
     const isDoctor = currentUser.role === 'doctor';
     const peerName = isDoctor ? consultation.userName || 'Officer John Vance' : consultation.doctorName || 'Dr. Sarah Connor, MD';
@@ -40,279 +40,167 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
     const peerAvatar = isDoctor
         ? (consultation.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80')
         : (consultation.doctorAvatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80');
+    const roomName = consultation.roomId || `consult-${consultation.id}`;
+    const participantIdentity = `${currentUser.role}:${currentUser.id || 'participant'}`;
 
-    // Initialize WebRTC & Socket.IO signaling
+    const cleanupCall = useCallback(() => {
+        if (timerRef.current) {
+            window.clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+
+        if (roomRef.current) {
+            const room = roomRef.current;
+            room.disconnect().catch(() => undefined);
+            roomRef.current = null;
+        }
+    }, []);
+
     useEffect(() => {
-        let isSubscribed = true;
+        let isActive = true;
 
-        const initializeCall = async () => {
+        const initializeLiveKitCall = async () => {
+            if (!LIVEKIT_URL || !LIVEKIT_TOKEN_SERVER_ID) {
+                if (!isActive) return;
+                setErrorMessage('Missing LiveKit configuration. Add VITE_LIVEKIT_URL and VITE_LIVEKIT_TOKEN_SERVER_ID to your frontend .env file.');
+                setCallState('FAILED');
+                setStatusMessage('Configuration required');
+                return;
+            }
+
             try {
-                // 1. Fetch authorized session room and STUN configuration from backend
-                const authRes = await fetch(`/api/calls/${consultation.id}/join`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-                    body: JSON.stringify({
-                        role: currentUser.role
-                    })
+                const room = new Room({
+                    adaptiveStream: true,
+                    dynacast: false,
+                    publishDefaults: { simulcast: false },
                 });
 
-                if (!authRes.ok) {
-                    throw new Error('Call authorization failed.');
-                }
+                roomRef.current = room;
 
-                const authData = await authRes.json();
-                const roomToken = authData.roomId || consultation.roomId || `room_${consultation.id}`;
-                const iceServers = authData.iceServers || [{ urls: 'stun:stun.l.google.com:19302' }];
-                console.log('[VOICE] Authorized call session', { consultationId: consultation.id, roomId: roomToken, role: currentUser.role });
-
-                // 2. Request microphone permission ONLY on call join
-                let localStream: MediaStream;
-                try {
-                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    localStreamRef.current = localStream;
-                } catch (micErr) {
-                    console.error('Microphone permission denied:', micErr);
-                    if (isSubscribed) {
-                        setMicPermissionDenied(true);
-                        setCallState('FAILED');
+                room.on(RoomEvent.ConnectionStateChanged, (state) => {
+                    if (!isActive) return;
+                    console.log('[LIVEKIT] state change:', state);
+                    if (state === 'connected') {
+                        setCallState('CONNECTED');
+                        setStatusMessage('Connected to LiveKit room');
+                        setConnectionQuality('Excellent');
+                    } else if (state === 'connecting') {
+                        setCallState('CONNECTING');
+                        setStatusMessage('Connecting to LiveKit room...');
+                    } else if (state === 'reconnecting') {
+                        setStatusMessage('Reconnecting to LiveKit room...');
                     }
+                });
+
+                room.on(RoomEvent.ParticipantConnected, (participant) => {
+                    if (!isActive) return;
+                    setParticipantStatus(`${participant.identity} joined the room`);
+                });
+
+                room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+                    if (!isActive) return;
+                    setParticipantStatus(`${participant.identity} left the room`);
+                });
+
+                room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+                    if (!isActive) return;
+                    if (speakers.length > 0) {
+                        setParticipantStatus(`${speakers.length} participant(s) speaking`);
+                    }
+                });
+
+                room.on(RoomEvent.Disconnected, () => {
+                    if (!isActive) return;
+                    setCallState('CLOSED');
+                    setStatusMessage('LiveKit call disconnected');
+                });
+
+                try {
+                    const tokenSource = TokenSource.developmentTokenServer(LIVEKIT_TOKEN_SERVER_ID);
+                    const tokenResponse = await tokenSource.fetch({
+                        roomName,
+                        participantIdentity,
+                        participantName: currentUser.name,
+                    });
+
+                    await room.connect(LIVEKIT_URL, tokenResponse.participantToken, { autoSubscribe: true });
+                    await room.localParticipant.setMicrophoneEnabled(true);
+                    await room.localParticipant.setCameraEnabled(false);
+
+                    setCallState('CONNECTED');
+                    setStatusMessage('Microphone live · audio-only room');
+                    setParticipantStatus('Connected to consultation room');
+                } catch (err) {
+                    console.error('[LIVEKIT] connection error:', err);
+                    if (!isActive) return;
+                    setMicPermissionDenied(true);
+                    setErrorMessage('Unable to connect to LiveKit. Please allow microphone access and confirm your token server is valid.');
+                    setCallState('FAILED');
+                    setStatusMessage('Connection failed');
                     return;
                 }
 
-                // 3. Connect to Socket.IO signaling server
-                const socket = io(AUDIO_CALL_URL, {
-                    transports: ['websocket', 'polling'],
-                    autoConnect: true,
-                    reconnection: true,
-                    reconnectionAttempts: 10,
-                    timeout: 20000
-                });
-                socketRef.current = socket;
-                console.log('[VOICE] Socket connecting to audio backend:', AUDIO_CALL_URL);
-
-                // 4. Create RTCPeerConnection
-                const pc = new RTCPeerConnection({ iceServers });
-                pcRef.current = pc;
-
-                // Add local audio track to PeerConnection
-                localStream.getTracks().forEach(track => {
-                    pc.addTrack(track, localStream);
-                });
-
-                // Listen for remote audio track
-                pc.ontrack = (event) => {
-                    console.log('[VOICE] Remote audio track received', event.streams?.[0] ? 'stream attached' : 'no stream');
-                    if (remoteAudioRef.current && event.streams[0]) {
-                        remoteAudioRef.current.srcObject = event.streams[0];
-                        remoteAudioRef.current.play().catch(() => console.warn('[VOICE] Remote audio autoplay blocked until user interaction.'));
-                        setCallState('CONNECTED');
-                    }
-                };
-
-                // ICE Candidates handling
-                pc.onicecandidate = (event) => {
-                    if (event.candidate && socketRef.current) {
-                        console.log('[VOICE] ICE candidate sent for room', roomToken);
-                        socketRef.current.emit('call:ice-candidate', {
-                            candidate: event.candidate,
-                            consultationId: consultation.id,
-                            roomId: roomToken
-                        });
-                    }
-                };
-
-                pc.onconnectionstatechange = () => {
-                    if (!isSubscribed) return;
-                    console.log('RTCPeerConnection state:', pc.connectionState);
-                    if (pc.connectionState === 'connected') {
-                        setCallState('CONNECTED');
-                    } else if (pc.connectionState === 'connecting') {
-                        setCallState('CONNECTING');
-                    } else if (pc.connectionState === 'disconnected') {
-                        setCallState('RECONNECTING');
-                    } else if (pc.connectionState === 'failed') {
-                        setCallState('FAILED');
-                    } else if (pc.connectionState === 'closed') {
-                        setCallState('CLOSED');
-                    }
-                };
-
-                // Socket Event Handlers
-                const joinPayload = {
-                    consultationId: consultation.id,
-                    roomId: roomToken,
-                    userId: currentUser.role === 'user_employee' ? currentUser.id : undefined,
-                    doctorId: currentUser.role === 'doctor' ? currentUser.id : undefined,
-                    role: currentUser.role
-                };
-
-                if (socket.connected) {
-                    socket.emit('call:join', joinPayload);
+                const roomState = room.state;
+                if (roomState === 'connected' && isActive) {
+                    setCallState('CONNECTED');
                 }
 
-                socket.on('connect', () => {
-                    socket.emit('call:join', joinPayload);
-                });
-
-                socket.on('call:ready', async ({ roomId }) => {
-                    console.log('[VOICE] call:ready', { roomId, consultationId: consultation.id, isDoctor });
-                    if (isDoctor && pc.signalingState === 'stable') {
-                        try {
-                            const offer = await pc.createOffer();
-                            await pc.setLocalDescription(offer);
-                            socket.emit('call:offer', { sdp: offer, consultationId: consultation.id, roomId: roomId || roomToken });
-                        } catch (e) {
-                            console.error('Error creating SDP offer:', e);
-                        }
-                    }
-                });
-
-                let iceCandidatesQueue: RTCIceCandidateInit[] = [];
-
-                socket.on('call:offer', async ({ sdp, roomId }) => {
-                    console.log('[VOICE] call:offer received', { roomId, from: 'remote' });
-                    if (!pc) return;
-                    try {
-                        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-                        const answer = await pc.createAnswer();
-                        await pc.setLocalDescription(answer);
-                        socket.emit('call:answer', { sdp: answer, consultationId: consultation.id, roomId: roomId || roomToken });
-                        setCallState('CONNECTED');
-
-                        // Process queued ICE candidates
-                        for (const candidate of iceCandidatesQueue) {
-                            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                        }
-                        iceCandidatesQueue = [];
-                    } catch (e) {
-                        console.error('Error handling SDP offer:', e);
-                    }
-                });
-
-                socket.on('call:answer', async ({ sdp, roomId }) => {
-                    console.log('[VOICE] call:answer received', { roomId });
-                    if (!pc) return;
-                    try {
-                        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-                        setCallState('CONNECTED');
-
-                        // Process queued ICE candidates
-                        for (const candidate of iceCandidatesQueue) {
-                            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                        }
-                        iceCandidatesQueue = [];
-                    } catch (e) {
-                        console.error('Error setting remote answer:', e);
-                    }
-                });
-
-                socket.on('call:ice-candidate', async ({ candidate, roomId }) => {
-                    console.log('[VOICE] ICE candidate received', { roomId, hasCandidate: !!candidate });
-                    if (!pc) return;
-                    try {
-                        if (pc.remoteDescription) {
-                            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                        } else {
-                            iceCandidatesQueue.push(candidate);
-                        }
-                    } catch (e) {
-                        console.error('Error adding ICE candidate:', e);
-                    }
-                });
-
-                socket.on('call:peer_mute_changed', ({ isMuted: peerMuted }) => {
-                    setPeerIsMuted(peerMuted);
-                });
-
-                socket.on('call:peer_reconnecting', () => {
-                    setCallState('RECONNECTING');
-                });
-
-                socket.on('call:ended', () => {
-                    cleanupCall();
-                    setCallState('CLOSED');
-                });
-
-                // Trigger start status API call
-                fetch(`/api/consultations/${consultation.id}/start`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-                    body: JSON.stringify({})
-                }).catch(err => console.error('Failed to mark start:', err));
-
             } catch (err) {
-                console.error('Failed to initialize voice call session:', err);
-                if (isSubscribed) setCallState('FAILED');
+                console.error('[LIVEKIT] initialization failed:', err);
+                if (isActive) {
+                    setErrorMessage('LiveKit audio room failed to initialize.');
+                    setCallState('FAILED');
+                    setStatusMessage('Initialization failed');
+                }
             }
         };
 
-        initializeCall();
+        void initializeLiveKitCall();
 
         return () => {
-            isSubscribed = false;
+            isActive = false;
             cleanupCall();
         };
-    }, [consultation.id]);
+    }, [cleanupCall, currentUser.id, currentUser.name, participantIdentity, roomName]);
 
-    // Timer logic
     useEffect(() => {
         if (callState === 'CONNECTED') {
-            timerRef.current = setInterval(() => {
+            timerRef.current = window.setInterval(() => {
                 setDurationSeconds(prev => prev + 1);
             }, 1000);
-        } else {
-            if (timerRef.current) clearInterval(timerRef.current);
+        } else if (timerRef.current) {
+            window.clearInterval(timerRef.current);
+            timerRef.current = null;
         }
+
         return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
+            if (timerRef.current) {
+                window.clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
         };
     }, [callState]);
 
-    const cleanupCall = () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        if (localStreamRef.current) {
-            localStreamRef.current.getTracks().forEach(track => track.stop());
-            localStreamRef.current = null;
-        }
-        if (pcRef.current) {
-            pcRef.current.close();
-            pcRef.current = null;
-        }
-        if (socketRef.current) {
-            socketRef.current.disconnect();
-            socketRef.current = null;
-        }
-    };
+    const toggleMute = async () => {
+        const room = roomRef.current;
+        if (!room) return;
 
-    const toggleMute = () => {
-        if (localStreamRef.current) {
-            const audioTrack = localStreamRef.current.getAudioTracks()[0];
-            if (audioTrack) {
-                audioTrack.enabled = !audioTrack.enabled;
-                setIsMuted(!audioTrack.enabled);
-                if (socketRef.current) {
-                    socketRef.current.emit('call:mute_state', {
-                        consultationId: consultation.id,
-                        isMuted: !audioTrack.enabled,
-                        role: currentUser.role
-                    });
-                }
-            }
-        }
+        const nextMuted = !isMuted;
+        await room.localParticipant.setMicrophoneEnabled(!nextMuted);
+        setIsMuted(nextMuted);
     };
 
     const handleEndCallConfirmed = async () => {
         setShowConfirmEnd(false);
         cleanupCall();
         setCallState('CLOSED');
+        setStatusMessage('Consultation ended');
 
         try {
             await fetch(`/api/consultations/${consultation.id}/end`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-                body: JSON.stringify({
-                    duration: durationSeconds
-                })
+                body: JSON.stringify({ duration: durationSeconds })
             });
         } catch (err) {
             console.error('Failed to complete consultation API call:', err);
@@ -329,92 +217,64 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
-            {/* Remote Audio element */}
-            <audio ref={remoteAudioRef} autoPlay playsInline />
-
             <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
-                {/* Header Security Status Bar */}
                 <div className="bg-slate-950/80 px-6 py-3 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400">
                     <div className="flex items-center gap-2 text-emerald-400 font-mono font-medium">
                         <Lock className="w-3.5 h-3.5" />
-                        <span>CONFIDENTIAL VOICE SESSION</span>
+                        <span>CONFIDENTIAL LIVEKIT VOICE SESSION</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1 text-slate-400">
-                            <Shield className="w-3.5 h-3.5 text-cyan-400" /> WebRTC P2P
-                        </span>
-                        <span className="text-slate-600">|</span>
-                        <span className="text-slate-400 font-medium">No Video / No Recording</span>
+                        <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">Close</button>
                     </div>
                 </div>
 
-                {/* Main Call View */}
                 <div className="p-8 flex flex-col items-center justify-center text-center">
-                    {/* Call Status Badge */}
                     <div className="mb-6 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-slate-800/80 border border-slate-700">
-                        <span className={`w-2.5 h-2.5 rounded-full ${callState === 'CONNECTED' ? 'bg-emerald-500 animate-pulse' :
-                            callState === 'CONNECTING' ? 'bg-amber-500 animate-ping' :
-                                callState === 'RECONNECTING' ? 'bg-orange-500 animate-bounce' : 'bg-red-500'
-                            }`} />
-                        <span className={
-                            callState === 'CONNECTED' ? 'text-emerald-400' :
-                                callState === 'CONNECTING' ? 'text-amber-400' :
-                                    callState === 'RECONNECTING' ? 'text-orange-400' : 'text-red-400'
-                        }>
-                            {callState === 'CONNECTED' ? 'Connected & Secure' :
-                                callState === 'CONNECTING' ? 'Establishing P2P Audio Connection...' :
-                                    callState === 'RECONNECTING' ? 'Reconnecting Session...' :
-                                        callState === 'FAILED' ? 'Connection Failed' : 'Call Session Ended'}
-                        </span>
+                        <span className={`w-2.5 h-2.5 rounded-full ${callState === 'CONNECTED' ? 'bg-emerald-500 animate-pulse' : callState === 'CONNECTING' ? 'bg-amber-500 animate-ping' : 'bg-red-500'}`} />
+                        <span className={callState === 'CONNECTED' ? 'text-emerald-400' : callState === 'CONNECTING' ? 'text-amber-400' : 'text-red-400'}>{statusMessage}</span>
                     </div>
 
-                    {/* Microphone Permission Warning */}
-                    {micPermissionDenied && (
+                    {errorMessage && (
                         <div className="mb-6 p-4 rounded-xl bg-red-950/60 border border-red-800 text-red-300 text-sm max-w-md flex items-start gap-3">
                             <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                             <div>
-                                <p className="font-semibold text-red-200">Microphone Access Denied</p>
-                                <p className="text-xs text-red-300/90 mt-1">
-                                    Please allow microphone permissions in your browser address bar to participate in the continuous voice consultation.
-                                </p>
+                                <p className="font-semibold text-red-200">LiveKit Session Error</p>
+                                <p className="text-xs text-red-300/90 mt-1">{errorMessage}</p>
                             </div>
                         </div>
                     )}
 
-                    {/* Peer Profile Card */}
-                    <div className="relative mb-6">
-                        <div className={`w-32 h-32 rounded-full border-4 p-1 transition-all duration-500 ${callState === 'CONNECTED' ? 'border-emerald-500/80 shadow-[0_0_30px_rgba(16,185,129,0.3)]' : 'border-slate-700'
-                            }`}>
-                            <img
-                                src={peerAvatar}
-                                alt={peerName}
-                                className="w-full h-full rounded-full object-cover"
-                            />
-                        </div>
-
-                        {/* Mute Indicator Badge */}
-                        {peerIsMuted && (
-                            <div className="absolute bottom-0 right-0 bg-red-600 text-white p-2 rounded-full border-2 border-slate-900 shadow-md">
-                                <MicOff className="w-4 h-4" />
+                    {micPermissionDenied && (
+                        <div className="mb-6 p-4 rounded-xl bg-red-950/60 border border-red-800 text-red-300 text-sm max-w-md flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-semibold text-red-200">Microphone Access Required</p>
+                                <p className="text-xs text-red-300/90 mt-1">Please allow microphone access in the browser to join the confidential audio consultation.</p>
                             </div>
-                        )}
+                        </div>
+                    )}
+
+                    <div className="relative mb-6">
+                        <div className={`w-32 h-32 rounded-full border-4 p-1 transition-all duration-500 ${callState === 'CONNECTED' ? 'border-emerald-500/80 shadow-[0_0_30px_rgba(16,185,129,0.3)]' : 'border-slate-700'}`}>
+                            <img src={peerAvatar} alt={peerName} className="w-full h-full rounded-full object-cover" />
+                        </div>
                     </div>
 
                     <h3 className="text-2xl font-bold text-slate-100 tracking-tight">{peerName}</h3>
                     <p className="text-sm text-slate-400 mt-1 font-medium">{peerTitle}</p>
+                    <p className="mt-3 text-xs text-slate-300 font-mono">{participantStatus}</p>
+
                     {isDoctor && (
                         <span className="mt-2 text-xs px-2.5 py-1 rounded-md bg-cyan-950/80 border border-cyan-800/60 text-cyan-300 font-mono">
                             {consultation.reason}
                         </span>
                     )}
 
-                    {/* Continuous Call Timer */}
                     <div className="mt-6 flex items-center gap-2 font-mono text-3xl font-bold text-emerald-400 tracking-wider">
                         <Clock className="w-6 h-6 text-emerald-500" />
                         <span>{formatTimer(durationSeconds)}</span>
                     </div>
 
-                    {/* Network & Audio Quality Bar */}
                     <div className="mt-3 flex items-center gap-4 text-xs text-slate-400">
                         <div className="flex items-center gap-1.5">
                             <Activity className="w-4 h-4 text-emerald-400" />
@@ -423,11 +283,10 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                         <span className="text-slate-700">•</span>
                         <div className="flex items-center gap-1.5">
                             <Volume2 className="w-4 h-4 text-cyan-400" />
-                            <span>Audio: 2-Way P2P</span>
+                            <span>Audio-only</span>
                         </div>
                     </div>
 
-                    {/* Doctor Clinical Context Drawer Trigger */}
                     {isDoctor && (
                         <button
                             onClick={() => setShowClinicalPanel(!showClinicalPanel)}
@@ -439,22 +298,16 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                         </button>
                     )}
 
-                    {/* Controls Bar */}
                     <div className="mt-8 flex items-center gap-6">
-                        {/* Mute Button */}
                         <button
-                            onClick={toggleMute}
+                            onClick={() => void toggleMute()}
                             disabled={callState !== 'CONNECTED'}
-                            className={`p-4 rounded-full border shadow-lg transition-all transform active:scale-95 ${isMuted
-                                ? 'bg-red-600/90 hover:bg-red-600 border-red-500 text-white'
-                                : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-emerald-400 hover:text-emerald-300'
-                                }`}
+                            className={`p-4 rounded-full border shadow-lg transition-all transform active:scale-95 ${isMuted ? 'bg-red-600/90 hover:bg-red-600 border-red-500 text-white' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-emerald-400 hover:text-emerald-300'}`}
                             title={isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
                         >
                             {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
                         </button>
 
-                        {/* End Call Button */}
                         <button
                             onClick={() => setShowConfirmEnd(true)}
                             className="p-4 rounded-full bg-red-600 hover:bg-red-500 border border-red-400 text-white shadow-lg shadow-red-950/50 transition-all transform active:scale-95 flex items-center justify-center"
@@ -465,13 +318,11 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                     </div>
                 </div>
 
-                {/* Footer Security Notice */}
                 <div className="bg-slate-950/90 px-6 py-3 border-t border-slate-800/80 text-center text-xs text-slate-500">
-                    🛡️ CHIDAMBARANAR AI Privacy Protocol: AI is not listening. Audio stream is ephemeral and unrecorded.
+                    🛡️ CHIDAMBARANAR AI Privacy Protocol: live audio only, no camera, no video streams.
                 </div>
             </div>
 
-            {/* Doctor Clinical Context Panel */}
             {isDoctor && showClinicalPanel && (
                 <div className="absolute right-6 top-6 bottom-6 w-96 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-6 overflow-y-auto z-50 text-left">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
@@ -505,35 +356,20 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                                 <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
                                 14-Day Risk Indicator:
                             </p>
-                            <p className="text-slate-300">
-                                Elevated fatigue trends over past 10 days due to late tactical ops deployments.
-                            </p>
+                            <p className="text-slate-300">Elevated fatigue trends over past 10 days due to late tactical ops deployments.</p>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* End Call Confirmation Modal */}
             {showConfirmEnd && (
                 <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center shadow-2xl">
                         <h4 className="text-lg font-bold text-slate-100">End consultation?</h4>
-                        <p className="text-xs text-slate-400 mt-2">
-                            Are you sure you want to end this private voice session with {peerName}?
-                        </p>
+                        <p className="text-xs text-slate-400 mt-2">Are you sure you want to end this private voice session with {peerName}?</p>
                         <div className="mt-6 flex items-center justify-center gap-3">
-                            <button
-                                onClick={() => setShowConfirmEnd(false)}
-                                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleEndCallConfirmed}
-                                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition shadow-md shadow-red-950"
-                            >
-                                End Call
-                            </button>
+                            <button onClick={() => setShowConfirmEnd(false)} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">Cancel</button>
+                            <button onClick={() => void handleEndCallConfirmed()} className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition shadow-md shadow-red-950">End Call</button>
                         </div>
                     </div>
                 </div>
