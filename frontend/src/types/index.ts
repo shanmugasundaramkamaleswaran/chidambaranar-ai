@@ -138,6 +138,7 @@ export interface Consultation {
     doctorTitle?: string;
     doctorAvatar?: string;
     doctorSpecialty?: string;
+    roomId?: string | null;
     notes?: ConsultationNote | null;
     created_at?: string;
     updated_at?: string;

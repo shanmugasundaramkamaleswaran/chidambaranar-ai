@@ -61,7 +61,9 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                 }
 
                 const authData = await authRes.json();
+                const roomToken = authData.roomId || consultation.roomId || `room_${consultation.id}`;
                 const iceServers = authData.iceServers || [{ urls: 'stun:stun.l.google.com:19302' }];
+                console.log('[VOICE] Authorized call session', { consultationId: consultation.id, roomId: roomToken, role: currentUser.role });
 
                 // 2. Request microphone permission ONLY on call join
                 let localStream: MediaStream;
@@ -80,9 +82,13 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                 // 3. Connect to Socket.IO signaling server
                 const socket = io(AUDIO_CALL_URL, {
                     transports: ['websocket', 'polling'],
-                    autoConnect: true
+                    autoConnect: true,
+                    reconnection: true,
+                    reconnectionAttempts: 10,
+                    timeout: 20000
                 });
                 socketRef.current = socket;
+                console.log('[VOICE] Socket connecting to audio backend:', AUDIO_CALL_URL);
 
                 // 4. Create RTCPeerConnection
                 const pc = new RTCPeerConnection({ iceServers });
@@ -95,8 +101,10 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
 
                 // Listen for remote audio track
                 pc.ontrack = (event) => {
+                    console.log('[VOICE] Remote audio track received', event.streams?.[0] ? 'stream attached' : 'no stream');
                     if (remoteAudioRef.current && event.streams[0]) {
                         remoteAudioRef.current.srcObject = event.streams[0];
+                        remoteAudioRef.current.play().catch(() => console.warn('[VOICE] Remote audio autoplay blocked until user interaction.'));
                         setCallState('CONNECTED');
                     }
                 };
@@ -104,9 +112,11 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                 // ICE Candidates handling
                 pc.onicecandidate = (event) => {
                     if (event.candidate && socketRef.current) {
+                        console.log('[VOICE] ICE candidate sent for room', roomToken);
                         socketRef.current.emit('call:ice-candidate', {
                             candidate: event.candidate,
-                            consultationId: consultation.id
+                            consultationId: consultation.id,
+                            roomId: roomToken
                         });
                     }
                 };
@@ -130,6 +140,7 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                 // Socket Event Handlers
                 const joinPayload = {
                     consultationId: consultation.id,
+                    roomId: roomToken,
                     userId: currentUser.role === 'user_employee' ? currentUser.id : undefined,
                     doctorId: currentUser.role === 'doctor' ? currentUser.id : undefined,
                     role: currentUser.role
@@ -143,13 +154,13 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                     socket.emit('call:join', joinPayload);
                 });
 
-                socket.on('call:ready', async () => {
-                    // Start offer if initiator
+                socket.on('call:ready', async ({ roomId }) => {
+                    console.log('[VOICE] call:ready', { roomId, consultationId: consultation.id, isDoctor });
                     if (isDoctor && pc.signalingState === 'stable') {
                         try {
                             const offer = await pc.createOffer();
                             await pc.setLocalDescription(offer);
-                            socket.emit('call:offer', { sdp: offer, consultationId: consultation.id });
+                            socket.emit('call:offer', { sdp: offer, consultationId: consultation.id, roomId: roomId || roomToken });
                         } catch (e) {
                             console.error('Error creating SDP offer:', e);
                         }
@@ -158,13 +169,14 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
 
                 let iceCandidatesQueue: RTCIceCandidateInit[] = [];
 
-                socket.on('call:offer', async ({ sdp }) => {
+                socket.on('call:offer', async ({ sdp, roomId }) => {
+                    console.log('[VOICE] call:offer received', { roomId, from: 'remote' });
                     if (!pc) return;
                     try {
                         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
-                        socket.emit('call:answer', { sdp: answer, consultationId: consultation.id });
+                        socket.emit('call:answer', { sdp: answer, consultationId: consultation.id, roomId: roomId || roomToken });
                         setCallState('CONNECTED');
 
                         // Process queued ICE candidates
@@ -177,7 +189,8 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                     }
                 });
 
-                socket.on('call:answer', async ({ sdp }) => {
+                socket.on('call:answer', async ({ sdp, roomId }) => {
+                    console.log('[VOICE] call:answer received', { roomId });
                     if (!pc) return;
                     try {
                         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
@@ -193,7 +206,8 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                     }
                 });
 
-                socket.on('call:ice-candidate', async ({ candidate }) => {
+                socket.on('call:ice-candidate', async ({ candidate, roomId }) => {
+                    console.log('[VOICE] ICE candidate received', { roomId, hasCandidate: !!candidate });
                     if (!pc) return;
                     try {
                         if (pc.remoteDescription) {

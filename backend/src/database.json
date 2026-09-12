@@ -460,6 +460,25 @@
   ],
   "consultations": [
     {
+      "id": "cons_1789194683933",
+      "userId": "usr_1",
+      "doctorId": "usr_doc1",
+      "status": "REQUESTED",
+      "consultationType": "audio",
+      "roomId": null,
+      "requested_at": "2026-09-12T06:31:23.933Z",
+      "accepted_at": null,
+      "started_at": null,
+      "ended_at": null,
+      "duration": null,
+      "scheduledTime": null,
+      "reason": "Persistent operational fatigue, sleep pattern disruption, and acute workload stress.",
+      "doctorNotes": "Pending physician review.",
+      "followUpAction": "",
+      "created_at": "2026-09-12T06:31:23.933Z",
+      "updated_at": "2026-09-12T06:31:23.933Z"
+    },
+    {
       "id": "cons_1789093895239",
       "userId": "usr_doc1",
       "doctorId": "usr_doc1",
@@ -645,6 +664,22 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": "log_1789194683938",
+      "timestamp": "2026-09-12T06:31:23.938Z",
+      "actorId": "usr_1",
+      "action": "CREATE_CONSULTATION_REQUEST",
+      "targetId": "cons_1789194683933",
+      "details": "Requested audio consultation with doctor usr_doc1."
+    },
+    {
+      "id": "log_1789194676988",
+      "timestamp": "2026-09-12T06:31:16.988Z",
+      "actorId": "usr_1",
+      "action": "USER_LOGIN",
+      "targetId": "usr_1",
+      "details": "Employee Officer John Vance logged into Sentinel Officer Portal (Aegis Defense Systems)."
+    },
     {
       "id": "log_1789100107785",
       "timestamp": "2026-09-11T04:15:07.785Z",

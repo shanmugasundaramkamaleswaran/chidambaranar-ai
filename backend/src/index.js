@@ -754,6 +754,15 @@ app.post('/api/consultations/:id/accept', requireAuth, requireRole(ROLES.PSYCHOL
         consultationType: cons.consultationType
     });
 
+    io.to(`user_${cons.doctorId}`).emit('consultation:accepted', {
+        consultationId: cons.id,
+        doctorName: doc ? doc.name : 'Dr. Sarah Connor, MD',
+        roomId: cons.roomId,
+        audioCallUrl: AUDIO_CALL_SERVICE_URL,
+        consultationType: cons.consultationType,
+        userId: cons.userId
+    });
+
     try {
         await fetch(`${AUDIO_CALL_SERVICE_URL}/api/consultations/authorize`, {
             method: 'POST',
@@ -846,7 +855,8 @@ app.post('/api/consultations/:id/end', requireAuth, requireRole([ROLES.PSYCHOLOG
     saveDb(db);
 
     addAuditLog(uid, 'END_CONSULTATION', cons.id, `Consultation ${cons.id} ended. Duration: ${duration || 'N/A'}.`);
-    io.to(`room_${cons.id}`).emit('call:ended', { consultationId: cons.id });
+    const roomToken = cons.roomId || `room_${cons.id}`;
+    io.to(roomToken).emit('call:ended', { consultationId: cons.id, roomId: roomToken });
 
     res.json({ success: true, consultation: cons });
 });
@@ -1082,6 +1092,8 @@ app.post('/api/calls/:consultationId/join', requireAuth, (req, res) => {
     }
 
     const roomToken = cons.roomId || `room_${consultationId}`;
+    cons.roomId = roomToken;
+    saveDb(db);
     addAuditLog(requesterId, 'JOIN_CALL_SESSION', consultationId, `Participant ${requesterId} authorized to join confidential room ${roomToken}.`);
 
     res.json({
@@ -1219,7 +1231,7 @@ io.on('connection', (socket) => {
     });
 
     // Room-Based WebRTC Call Handlers
-    socket.on('call:join', ({ consultationId, userId, doctorId, participantId, role }) => {
+    socket.on('call:join', ({ consultationId, userId, doctorId, participantId, role, roomId }) => {
         const db = getDb();
         const cons = db.consultations.find(c => c.id === consultationId);
 
@@ -1230,35 +1242,40 @@ io.on('connection', (socket) => {
             return;
         }
 
-        const roomToken = `room_${consultationId}`;
+        const roomToken = (typeof roomId === 'string' && roomId.trim()) ? roomId.trim() : (cons.roomId || `room_${consultationId}`);
+        cons.roomId = roomToken;
+        saveDb(db);
+
         socket.join(roomToken);
-        socket.data = { consultationId, userId: currentPartId, role, room: roomToken };
+        socket.data = { ...socket.data, consultationId, userId: currentPartId, role, room: roomToken };
 
         console.log(`🎧 Participant ${currentPartId} (${role}) joined consultation room: ${roomToken}`);
 
         const roomSockets = io.sockets.adapter.rooms.get(roomToken);
         const occupantCount = roomSockets ? roomSockets.size : 0;
 
-        socket.to(roomToken).emit('call:peer_joined', { participantId: currentPartId, role, occupantCount });
+        socket.to(roomToken).emit('call:peer_joined', { participantId: currentPartId, role, occupantCount, roomId: roomToken });
 
         if (occupantCount >= 2) {
-            io.to(roomToken).emit('call:ready', { consultationId, status: 'IN_PROGRESS' });
+            io.to(roomToken).emit('call:ready', { consultationId, roomId: roomToken, status: 'IN_PROGRESS' });
         }
     });
 
-    socket.on('call:offer', ({ sdp, consultationId }) => {
-        const roomToken = `room_${consultationId}`;
-        socket.to(roomToken).emit('call:offer', { sdp, senderId: socket.id });
+    socket.on('call:offer', ({ sdp, consultationId, roomId }) => {
+        const roomToken = (typeof roomId === 'string' && roomId.trim()) ? roomId.trim() : `room_${consultationId}`;
+        console.log(`📤 Offer sent for room ${roomToken}`);
+        socket.to(roomToken).emit('call:offer', { sdp, senderId: socket.id, roomId: roomToken });
     });
 
-    socket.on('call:answer', ({ sdp, consultationId }) => {
-        const roomToken = `room_${consultationId}`;
-        socket.to(roomToken).emit('call:answer', { sdp, senderId: socket.id });
+    socket.on('call:answer', ({ sdp, consultationId, roomId }) => {
+        const roomToken = (typeof roomId === 'string' && roomId.trim()) ? roomId.trim() : `room_${consultationId}`;
+        console.log(`📤 Answer sent for room ${roomToken}`);
+        socket.to(roomToken).emit('call:answer', { sdp, senderId: socket.id, roomId: roomToken });
     });
 
-    socket.on('call:ice-candidate', ({ candidate, consultationId }) => {
-        const roomToken = `room_${consultationId}`;
-        socket.to(roomToken).emit('call:ice-candidate', { candidate, senderId: socket.id });
+    socket.on('call:ice-candidate', ({ candidate, consultationId, roomId }) => {
+        const roomToken = (typeof roomId === 'string' && roomId.trim()) ? roomId.trim() : `room_${consultationId}`;
+        socket.to(roomToken).emit('call:ice-candidate', { candidate, senderId: socket.id, roomId: roomToken });
     });
 
     socket.on('call:mute_state', ({ consultationId, isMuted, role }) => {
