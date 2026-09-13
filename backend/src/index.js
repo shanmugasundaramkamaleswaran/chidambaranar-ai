@@ -532,10 +532,6 @@ app.post('/api/consultations/request', requireAuth, requireRole([ROLES.USER, ROL
         consultationType: 'audio'
     };
 
-    io.to(`user_${targetDocId}`).emit('consultation:request', payload);
-    io.to(`user_${targetDocId}`).emit('consultation-requested', payload);
-    io.to(`user_${uid}`).emit('consultation-requested', { ...payload, status: 'REQUESTED' });
-
     res.json({ success: true, consultation: newConsultation });
 });
 
@@ -682,7 +678,6 @@ app.put('/api/psychologists/availability', requireAuth, requireRole(ROLES.PSYCHO
         doc.availabilityStatus = availabilityStatus;
         saveDb(db);
         addAuditLog(doc.id, 'UPDATE_AVAILABILITY', doc.id, `Psychologist ${doc.name} updated availability to ${availabilityStatus}.`);
-        io.emit('psychologist:availability_changed', { doctorId: doc.id, availabilityStatus });
         return res.json({ success: true, doctor: doc });
     }
     return res.status(400).json({ error: 'Invalid availability status' });
@@ -722,50 +717,13 @@ app.post('/api/consultations/:id/accept', requireAuth, requireRole(ROLES.PSYCHOL
 
     cons.status = 'ACCEPTED';
     cons.consultationType = cons.consultationType || 'audio';
-    cons.roomId = cons.roomId || generateSecureRoomId();
     cons.accepted_at = new Date().toISOString();
     cons.updated_at = new Date().toISOString();
     saveDb(db);
 
     addAuditLog(req.user.id, 'ACCEPT_CONSULTATION', cons.id, `Accepted audio consultation request ${cons.id}. Room: ${cons.roomId}.`);
 
-    const doc = db.users.find(u => u.id === req.user.id);
-    const acceptedPayload = {
-        consultationId: cons.id,
-        doctorName: doc ? doc.name : 'Dr. Sarah Connor, MD',
-        roomId: cons.roomId,
-        audioCallUrl: AUDIO_CALL_SERVICE_URL,
-        consultationType: cons.consultationType,
-        status: 'ACCEPTED',
-        consultation: cons
-    };
-
-    emitConsultationUpdate(cons, 'consultation:accepted', acceptedPayload);
-    emitConsultationUpdate(cons, 'consultation-accepted', acceptedPayload);
-    io.to(`user_${cons.userId}`).emit('call-ready', { consultationId: cons.id, roomId: cons.roomId, status: 'ACCEPTED' });
-    io.to(`user_${cons.doctorId}`).emit('call-ready', { consultationId: cons.id, roomId: cons.roomId, status: 'ACCEPTED' });
-
-    try {
-        await fetch(`${AUDIO_CALL_SERVICE_URL}/api/consultations/authorize`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-service': 'chidambaranar-main-backend'
-            },
-            body: JSON.stringify({
-                consultationId: cons.id,
-                userId: cons.userId,
-                psychologistId: cons.doctorId,
-                roomId: cons.roomId,
-                consultationType: 'audio',
-                status: 'ACCEPTED'
-            })
-        });
-    } catch (err) {
-        console.warn('Audio service callback failed, continuing with local consultation flow:', err.message);
-    }
-
-    res.json({ success: true, consultation: cons, audioCallUrl: AUDIO_CALL_SERVICE_URL, roomId: cons.roomId });
+    res.json({ success: true, consultation: cons, roomId: cons.roomId, consultationType: cons.consultationType || 'audio' });
 });
 
 app.post('/api/consultations/:id/reject', requireAuth, requireRole(ROLES.PSYCHOLOGIST), (req, res) => {
@@ -787,17 +745,6 @@ app.post('/api/consultations/:id/reject', requireAuth, requireRole(ROLES.PSYCHOL
 
     addAuditLog(req.user.id, 'REJECT_CONSULTATION', cons.id, `Rejected consultation request ${cons.id}.`);
 
-    const rejectedPayload = {
-        consultationId: cons.id,
-        reason: reason || 'Psychologist currently unavailable',
-        consultation: cons,
-        roomId: cons.roomId,
-        status: 'REJECTED'
-    };
-
-    emitConsultationUpdate(cons, 'consultation:rejected', rejectedPayload);
-    emitConsultationUpdate(cons, 'consultation-rejected', rejectedPayload);
-
     res.json({ success: true, consultation: cons });
 });
 
@@ -816,9 +763,6 @@ app.post('/api/consultations/:id/start', requireAuth, requireRole([ROLES.PSYCHOL
     if (!cons.started_at) cons.started_at = new Date().toISOString();
     cons.updated_at = new Date().toISOString();
     saveDb(db);
-
-    io.to(`user_${cons.userId}`).emit('consultation:ready', { consultationId: cons.id });
-    io.to(`user_${cons.doctorId}`).emit('consultation:ready', { consultationId: cons.id });
 
     res.json({ success: true, consultation: cons });
 });
@@ -843,12 +787,6 @@ app.post('/api/consultations/:id/end', requireAuth, requireRole([ROLES.PSYCHOLOG
     saveDb(db);
 
     addAuditLog(uid, 'END_CONSULTATION', cons.id, `Consultation ${cons.id} ended. Duration: ${duration || 'N/A'}.`);
-    const roomToken = cons.roomId || `room_${cons.id}`;
-    const endedPayload = { consultationId: cons.id, roomId: roomToken, status: 'COMPLETED', consultation: cons };
-    emitConsultationUpdate(cons, 'call:ended', endedPayload);
-    emitConsultationUpdate(cons, 'call-ended', endedPayload);
-    io.to(roomToken).emit('call:ended', endedPayload);
-
     res.json({ success: true, consultation: cons });
 });
 
@@ -1092,8 +1030,6 @@ app.post('/api/calls/:consultationId/join', requireAuth, (req, res) => {
         consultation: cons,
         room: roomToken,
         roomId: roomToken,
-        audioCallUrl: AUDIO_CALL_SERVICE_URL,
-        iceServers: getIceServers(),
         consultationType: 'audio'
     });
 });
@@ -1105,197 +1041,6 @@ app.get('/api/users', requireAuth, requireRole(ROLES.ORGANIZATION_OFFICER), (req
     const db = getDb();
     const safeUsers = db.users.map(({ passwordHash, ...user }) => user);
     res.json({ users: safeUsers });
-});
-
-// ============================================================
-// SOCKET.IO WEBRTC SIGNALING SERVER
-// ============================================================
-
-const onlineUsers = new Map(); // userId -> { socketId, name, role }
-
-io.on('connection', (socket) => {
-    console.log(`⚡ Socket connected: ${socket.id}`);
-
-    // Register user for direct P2P call signaling & room routing
-    socket.on('user:register', ({ userId, name, role }) => {
-        if (userId) {
-            socket.join(`user_${userId}`);
-            socket.data = { ...socket.data, userId, username: name || userId, role: role || 'user' };
-            onlineUsers.set(userId, { socketId: socket.id, name: name || userId, role: role || 'user' });
-            console.log(`👤 Socket ${socket.id} registered for user: ${userId}`);
-        }
-    });
-
-    socket.on('user:online', ({ userId, name, role }) => {
-        if (userId) {
-            socket.join(`user_${userId}`);
-            socket.data = { ...socket.data, userId, username: name || userId, role: role || 'user' };
-            onlineUsers.set(userId, { socketId: socket.id, name: name || userId, role: role || 'user' });
-        }
-    });
-
-    // Realtime-Voice-Chat-System-main P2P Call Handlers
-    socket.on('consultation:request', ({ toUserId, doctorId, note, reason }) => {
-        const targetId = toUserId || doctorId;
-        const fromUserId = socket.data.userId || socket.id;
-        const fromName = socket.data.username || fromUserId;
-
-        console.log(`📞 Call Request: ${fromName} (${fromUserId}) -> Doctor ${targetId}`);
-
-        if (targetId) {
-            io.to(`user_${targetId}`).emit('consultation:incoming', {
-                fromUserId,
-                fromName,
-                note: note || reason,
-                role: socket.data.role || 'user'
-            });
-            io.to(`user_${targetId}`).emit('consultation:request', {
-                fromUserId,
-                fromName,
-                reason: note || reason
-            });
-            socket.emit('consultation:requested', { toUserId: targetId });
-        }
-    });
-
-    socket.on('consultation:accept', ({ toUserId, userId, consultationId }) => {
-        const targetId = toUserId || userId;
-        const doctorId = socket.data.userId || socket.id;
-        console.log(`✅ Call Accepted by Doctor ${doctorId} for User ${targetId}`);
-
-        if (targetId) {
-            io.to(`user_${targetId}`).emit('consultation:accepted', {
-                consultationId,
-                doctorId,
-                doctorName: socket.data.username || doctorId
-            });
-        }
-        if (consultationId) {
-            io.to(`room_${consultationId}`).emit('call:ready', { consultationId, status: 'IN_PROGRESS' });
-        }
-    });
-
-    socket.on('consultation:reject', ({ toUserId, userId, reason }) => {
-        const targetId = toUserId || userId;
-        if (targetId) {
-            io.to(`user_${targetId}`).emit('consultation:rejected', {
-                reason: reason || 'Psychologist unavailable at this moment.'
-            });
-        }
-    });
-
-    socket.on('consultation:end', ({ toUserId, consultationId }) => {
-        if (toUserId) {
-            io.to(`user_${toUserId}`).emit('consultation:ended', { fromUserId: socket.data.userId });
-        }
-        if (consultationId) {
-            io.to(`room_${consultationId}`).emit('call:ended', { consultationId });
-        }
-    });
-
-    // Realtime-Voice-Chat-System-main WebRTC Direct Signal Handlers
-    socket.on('webrtc:offer', ({ toUserId, offer, consultationId }) => {
-        if (toUserId) {
-            io.to(`user_${toUserId}`).emit('webrtc:offer', { offer, fromUserId: socket.data.userId });
-        }
-        if (consultationId) {
-            socket.to(`room_${consultationId}`).emit('call:offer', { sdp: offer, senderId: socket.id });
-        }
-    });
-
-    socket.on('webrtc:answer', ({ toUserId, answer, consultationId }) => {
-        if (toUserId) {
-            io.to(`user_${toUserId}`).emit('webrtc:answer', { answer, fromUserId: socket.data.userId });
-        }
-        if (consultationId) {
-            socket.to(`room_${consultationId}`).emit('call:answer', { sdp: answer, senderId: socket.id });
-        }
-    });
-
-    socket.on('webrtc:ice', ({ toUserId, candidate, consultationId }) => {
-        if (toUserId) {
-            io.to(`user_${toUserId}`).emit('webrtc:ice', { candidate, fromUserId: socket.data.userId });
-        }
-        if (consultationId) {
-            socket.to(`room_${consultationId}`).emit('call:ice-candidate', { candidate, senderId: socket.id });
-        }
-    });
-
-    // Room-Based WebRTC Call Handlers
-    socket.on('call:join', ({ consultationId, userId, doctorId, participantId, role, roomId }) => {
-        const db = getDb();
-        const cons = db.consultations.find(c => c.id === consultationId);
-
-        const currentPartId = participantId || userId || doctorId || (socket.data && socket.data.userId);
-
-        if (!cons) {
-            socket.emit('call:error', { message: 'Consultation session not found.' });
-            return;
-        }
-
-        const roomToken = (typeof roomId === 'string' && roomId.trim()) ? roomId.trim() : (cons.roomId || `room_${consultationId}`);
-        cons.roomId = roomToken;
-        saveDb(db);
-
-        socket.join(roomToken);
-        socket.data = { ...socket.data, consultationId, userId: currentPartId, role, room: roomToken };
-
-        console.log(`🎧 Participant ${currentPartId} (${role}) joined consultation room: ${roomToken}`);
-
-        const roomSockets = io.sockets.adapter.rooms.get(roomToken);
-        const occupantCount = roomSockets ? roomSockets.size : 0;
-
-        socket.to(roomToken).emit('call:peer_joined', { participantId: currentPartId, role, occupantCount, roomId: roomToken });
-
-        if (occupantCount >= 2) {
-            io.to(roomToken).emit('call:ready', { consultationId, roomId: roomToken, status: 'IN_PROGRESS' });
-        }
-    });
-
-    socket.on('call:offer', ({ sdp, consultationId, roomId }) => {
-        const roomToken = (typeof roomId === 'string' && roomId.trim()) ? roomId.trim() : `room_${consultationId}`;
-        console.log(`📤 Offer sent for room ${roomToken}`);
-        socket.to(roomToken).emit('call:offer', { sdp, senderId: socket.id, roomId: roomToken });
-    });
-
-    socket.on('call:answer', ({ sdp, consultationId, roomId }) => {
-        const roomToken = (typeof roomId === 'string' && roomId.trim()) ? roomId.trim() : `room_${consultationId}`;
-        console.log(`📤 Answer sent for room ${roomToken}`);
-        socket.to(roomToken).emit('call:answer', { sdp, senderId: socket.id, roomId: roomToken });
-    });
-
-    socket.on('call:ice-candidate', ({ candidate, consultationId, roomId }) => {
-        const roomToken = (typeof roomId === 'string' && roomId.trim()) ? roomId.trim() : `room_${consultationId}`;
-        socket.to(roomToken).emit('call:ice-candidate', { candidate, senderId: socket.id, roomId: roomToken });
-    });
-
-    socket.on('call:mute_state', ({ consultationId, isMuted, role }) => {
-        const roomToken = `room_${consultationId}`;
-        socket.to(roomToken).emit('call:peer_mute_changed', { isMuted, role });
-    });
-
-    socket.on('call:reconnect_attempt', ({ consultationId, role }) => {
-        const roomToken = `room_${consultationId}`;
-        socket.to(roomToken).emit('call:peer_reconnecting', { role });
-    });
-
-    socket.on('call:end', ({ consultationId }) => {
-        const roomToken = `room_${consultationId}`;
-        io.to(roomToken).emit('call:ended', { consultationId });
-    });
-
-    socket.on('disconnect', () => {
-        if (socket.data && socket.data.userId) {
-            onlineUsers.delete(socket.data.userId);
-        }
-        if (socket.data && socket.data.room) {
-            socket.to(socket.data.room).emit('call:peer_disconnected', {
-                participantId: socket.data.userId,
-                role: socket.data.role
-            });
-        }
-        console.log(`🔌 Socket disconnected: ${socket.id}`);
-    });
 });
 
 // ============================================================
