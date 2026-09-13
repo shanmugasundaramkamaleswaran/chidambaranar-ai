@@ -74,30 +74,59 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
     useEffect(() => {
         fetchDashboardData();
 
-        // Socket.IO real-time notification listener
-        const socket = io(window.location.origin, { transports: ['websocket', 'polling'] });
+        const audioCallUrl = (import.meta.env.VITE_AUDIO_CALL_URL || 'https://chidambaranar-ai-call-support.onrender.com').replace(/\/$/, '');
+        const socket = io(audioCallUrl, {
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            timeout: 20000,
+            auth: {
+                token: getAuthHeader().Authorization?.replace('Bearer ', '') || ''
+            }
+        });
 
         socket.on('connect', () => {
-            socket.emit('user:register', { userId: user.id });
+            socket.emit('user:register', { userId: user.id, name: user.name, role: 'USER' });
         });
 
-        socket.on('consultation:accepted', ({ consultationId, doctorName, roomId }) => {
-            setIncomingNotification({ consultationId, doctorName });
-            const matchingConsultation = userConsultations.find(c => c.id === consultationId);
+        socket.on('consultation:accepted', ({ consultationId, doctorName, roomId, consultation }) => {
+            const matchingConsultation = consultation || userConsultations.find(c => c.id === consultationId) || null;
             if (matchingConsultation) {
-                setActiveCallConsultation({ ...matchingConsultation, status: 'ACCEPTED' } as Consultation);
+                setActiveCallConsultation({ ...matchingConsultation, status: 'ACCEPTED', roomId: roomId || matchingConsultation.roomId } as Consultation);
             }
+            setIncomingNotification({ consultationId, doctorName: doctorName || matchingConsultation?.doctorName || 'Psychologist' });
+            setUserConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, status: 'ACCEPTED', roomId: roomId || c.roomId } : c));
             fetchDashboardData();
         });
 
-        socket.on('consultation:ready', ({ consultationId }) => {
+        socket.on('consultation-requested', ({ consultation }) => {
+            setUserConsultations(prev => {
+                if (!consultation) return prev;
+                const existing = prev.find(c => c.id === consultation.id);
+                if (existing) return prev.map(c => c.id === consultation.id ? { ...existing, status: consultation.status } : c);
+                return [consultation, ...prev];
+            });
+        });
+
+        socket.on('consultation:rejected', ({ consultationId }) => {
+            setUserConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, status: 'REJECTED' } : c));
+            setIncomingNotification(null);
+        });
+
+        socket.on('call-ready', ({ consultationId, roomId }) => {
+            setUserConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, roomId, status: 'ACCEPTED' } : c));
             fetchDashboardData();
+        });
+
+        socket.on('call:ended', ({ consultationId }) => {
+            setUserConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, status: 'COMPLETED' } : c));
+            setIncomingNotification(null);
+            setActiveCallConsultation(null);
         });
 
         return () => {
             socket.disconnect();
         };
-    }, [user.id]);
+    }, [user.id, user.name]);
 
     // Submit New Daily Check-In
     const handleCheckinSubmit = async (e: React.FormEvent) => {

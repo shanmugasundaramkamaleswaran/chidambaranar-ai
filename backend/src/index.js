@@ -24,6 +24,19 @@ const AUDIO_CALL_SERVICE_URL = process.env.AUDIO_CALL_SERVICE_URL || 'https://ch
 
 const generateSecureRoomId = () => crypto.randomBytes(16).toString('hex');
 
+const emitConsultationUpdate = (consultation, eventName, payload = {}) => {
+    const base = {
+        consultationId: consultation.id,
+        consultation,
+        roomId: consultation.roomId,
+        status: consultation.status,
+        ...payload
+    };
+
+    io.to(`user_${consultation.userId}`).emit(eventName, base);
+    io.to(`user_${consultation.doctorId}`).emit(eventName, base);
+};
+
 app.use(cors());
 app.use(express.json());
 
@@ -546,11 +559,18 @@ app.post('/api/consultations/request', requireAuth, requireRole([ROLES.USER, ROL
     const user = db.users.find(u => u.id === uid);
     addAuditLog(uid, 'CREATE_CONSULTATION_REQUEST', newConsultation.id, `Requested audio consultation with doctor ${targetDocId}.`);
 
-    io.to(`user_${targetDocId}`).emit('consultation:request', {
+    const payload = {
         consultation: newConsultation,
         userName: user ? user.name : 'Officer',
-        type: 'audio'
-    });
+        doctorId: targetDocId,
+        type: 'audio',
+        roomId: newConsultation.roomId,
+        consultationType: 'audio'
+    };
+
+    io.to(`user_${targetDocId}`).emit('consultation:request', payload);
+    io.to(`user_${targetDocId}`).emit('consultation-requested', payload);
+    io.to(`user_${uid}`).emit('consultation-requested', { ...payload, status: 'REQUESTED' });
 
     res.json({ success: true, consultation: newConsultation });
 });
@@ -746,22 +766,20 @@ app.post('/api/consultations/:id/accept', requireAuth, requireRole(ROLES.PSYCHOL
     addAuditLog(req.user.id, 'ACCEPT_CONSULTATION', cons.id, `Accepted audio consultation request ${cons.id}. Room: ${cons.roomId}.`);
 
     const doc = db.users.find(u => u.id === req.user.id);
-    io.to(`user_${cons.userId}`).emit('consultation:accepted', {
-        consultationId: cons.id,
-        doctorName: doc ? doc.name : 'Dr. Sarah Connor, MD',
-        roomId: cons.roomId,
-        audioCallUrl: AUDIO_CALL_SERVICE_URL,
-        consultationType: cons.consultationType
-    });
-
-    io.to(`user_${cons.doctorId}`).emit('consultation:accepted', {
+    const acceptedPayload = {
         consultationId: cons.id,
         doctorName: doc ? doc.name : 'Dr. Sarah Connor, MD',
         roomId: cons.roomId,
         audioCallUrl: AUDIO_CALL_SERVICE_URL,
         consultationType: cons.consultationType,
-        userId: cons.userId
-    });
+        status: 'ACCEPTED',
+        consultation: cons
+    };
+
+    emitConsultationUpdate(cons, 'consultation:accepted', acceptedPayload);
+    emitConsultationUpdate(cons, 'consultation-accepted', acceptedPayload);
+    io.to(`user_${cons.userId}`).emit('call-ready', { consultationId: cons.id, roomId: cons.roomId, status: 'ACCEPTED' });
+    io.to(`user_${cons.doctorId}`).emit('call-ready', { consultationId: cons.id, roomId: cons.roomId, status: 'ACCEPTED' });
 
     try {
         await fetch(`${AUDIO_CALL_SERVICE_URL}/api/consultations/authorize`, {
@@ -805,10 +823,16 @@ app.post('/api/consultations/:id/reject', requireAuth, requireRole(ROLES.PSYCHOL
 
     addAuditLog(req.user.id, 'REJECT_CONSULTATION', cons.id, `Rejected consultation request ${cons.id}.`);
 
-    io.to(`user_${cons.userId}`).emit('consultation:rejected', {
+    const rejectedPayload = {
         consultationId: cons.id,
-        reason: reason || 'Psychologist currently unavailable'
-    });
+        reason: reason || 'Psychologist currently unavailable',
+        consultation: cons,
+        roomId: cons.roomId,
+        status: 'REJECTED'
+    };
+
+    emitConsultationUpdate(cons, 'consultation:rejected', rejectedPayload);
+    emitConsultationUpdate(cons, 'consultation-rejected', rejectedPayload);
 
     res.json({ success: true, consultation: cons });
 });
@@ -856,7 +880,10 @@ app.post('/api/consultations/:id/end', requireAuth, requireRole([ROLES.PSYCHOLOG
 
     addAuditLog(uid, 'END_CONSULTATION', cons.id, `Consultation ${cons.id} ended. Duration: ${duration || 'N/A'}.`);
     const roomToken = cons.roomId || `room_${cons.id}`;
-    io.to(roomToken).emit('call:ended', { consultationId: cons.id, roomId: roomToken });
+    const endedPayload = { consultationId: cons.id, roomId: roomToken, status: 'COMPLETED', consultation: cons };
+    emitConsultationUpdate(cons, 'call:ended', endedPayload);
+    emitConsultationUpdate(cons, 'call-ended', endedPayload);
+    io.to(roomToken).emit('call:ended', endedPayload);
 
     res.json({ success: true, consultation: cons });
 });

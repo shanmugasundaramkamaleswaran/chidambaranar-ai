@@ -89,11 +89,18 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
     useEffect(() => {
         fetchDoctorData();
 
-        // Socket.IO registration for incoming request notifications
-        const socket = io(window.location.origin, { transports: ['websocket', 'polling'] });
+        const audioCallUrl = (import.meta.env.VITE_AUDIO_CALL_URL || 'https://chidambaranar-ai-call-support.onrender.com').replace(/\/$/, '');
+        const socket = io(audioCallUrl, {
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            timeout: 20000,
+            auth: {
+                token: getAuthHeader().Authorization?.replace('Bearer ', '') || ''
+            }
+        });
 
         socket.on('connect', () => {
-            socket.emit('user:register', { userId: doctor.id });
+            socket.emit('user:register', { userId: doctor.id, name: doctor.name, role: 'PSYCHOLOGIST' });
         });
 
         socket.on('consultation:request', (data) => {
@@ -107,10 +114,32 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
             fetchDoctorData();
         });
 
+        socket.on('consultation-requested', (data) => {
+            const normalized = {
+                ...data,
+                consultationId: data?.consultation?.id || data?.consultationId,
+                userName: data?.userName || data?.fromName || data?.consultation?.userName || 'Officer',
+                reason: data?.reason || data?.consultation?.reason || 'Confidential audio consultation request'
+            };
+            setIncomingCallRequest(normalized);
+            fetchDoctorData();
+        });
+
+        socket.on('consultation:accepted', ({ consultationId, roomId, consultation }) => {
+            setActiveCallConsultation((prev) => prev || (consultation as Consultation) || null);
+            setConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, status: 'ACCEPTED', roomId: roomId || c.roomId } : c));
+        });
+
+        socket.on('call:ended', ({ consultationId }) => {
+            setActiveCallConsultation(null);
+            setIncomingCallRequest(null);
+            fetchDoctorData();
+        });
+
         return () => {
             socket.disconnect();
         };
-    }, [doctor.id]);
+    }, [doctor.id, doctor.name]);
 
     // Handle updating availability status
     const handleAvailabilityChange = async (newStatus: 'AVAILABLE' | 'BUSY' | 'OFFLINE') => {

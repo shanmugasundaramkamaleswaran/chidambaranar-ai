@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Room, RoomEvent, TokenSource, Track } from 'livekit-client';
-import { Mic, MicOff, PhoneOff, Shield, Activity, Lock, AlertCircle, Clock, Volume2, ChevronRight, X, HeartPulse } from 'lucide-react';
+import { io, Socket } from 'socket.io-client';
+import { Mic, MicOff, PhoneOff, Activity, Lock, AlertCircle, Clock, Volume2, ChevronRight, X, HeartPulse } from 'lucide-react';
 import { Consultation, User } from '../types';
 import { getAuthHeader } from '../auth';
 
-const LIVEKIT_URL = (import.meta.env.VITE_LIVEKIT_URL ?? '').trim();
-const LIVEKIT_TOKEN_SERVER_ID = (import.meta.env.VITE_LIVEKIT_TOKEN_SERVER_ID ?? '').trim();
+const AUDIO_CALL_URL = (import.meta.env.VITE_AUDIO_CALL_URL ?? 'https://chidambaranar-ai-call-support.onrender.com').trim().replace(/\/$/, '');
 
 interface VoiceCallModalProps {
     consultation: Consultation;
@@ -18,7 +17,7 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
     consultation,
     currentUser,
     onClose,
-    onCallEnded
+    onCallEnded,
 }) => {
     const [callState, setCallState] = useState<'CONNECTING' | 'CONNECTED' | 'FAILED' | 'CLOSED'>('CONNECTING');
     const [isMuted, setIsMuted] = useState(false);
@@ -28,11 +27,15 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
     const [connectionQuality, setConnectionQuality] = useState<'Excellent' | 'Good' | 'Fair'>('Excellent');
     const [micPermissionDenied, setMicPermissionDenied] = useState(false);
     const [participantStatus, setParticipantStatus] = useState('Waiting for participant...');
-    const [statusMessage, setStatusMessage] = useState('Connecting to LiveKit room...');
+    const [statusMessage, setStatusMessage] = useState('Connecting to audio consultation room...');
     const [errorMessage, setErrorMessage] = useState('');
 
-    const roomRef = useRef<Room | null>(null);
+    const socketRef = useRef<Socket | null>(null);
+    const peerRef = useRef<RTCPeerConnection | null>(null);
+    const localStreamRef = useRef<MediaStream | null>(null);
     const timerRef = useRef<number | null>(null);
+    const offerCreatedRef = useRef(false);
+    const roomId = consultation.roomId || `room_${consultation.id}`;
 
     const isDoctor = currentUser.role === 'doctor';
     const peerName = isDoctor ? consultation.userName || 'Officer John Vance' : consultation.doctorName || 'Dr. Sarah Connor, MD';
@@ -40,8 +43,6 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
     const peerAvatar = isDoctor
         ? (consultation.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80')
         : (consultation.doctorAvatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80');
-    const roomName = consultation.roomId || `consult-${consultation.id}`;
-    const participantIdentity = `${currentUser.role}:${currentUser.id || 'participant'}`;
 
     const cleanupCall = useCallback(() => {
         if (timerRef.current) {
@@ -49,119 +50,203 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
             timerRef.current = null;
         }
 
-        if (roomRef.current) {
-            const room = roomRef.current;
-            room.disconnect().catch(() => undefined);
-            roomRef.current = null;
+        if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach(track => track.stop());
+            localStreamRef.current = null;
         }
-    }, []);
+
+        if (peerRef.current) {
+            peerRef.current.close();
+            peerRef.current = null;
+        }
+
+        if (socketRef.current) {
+            socketRef.current.emit('call:end', { consultationId: consultation.id, roomId });
+            socketRef.current.disconnect();
+            socketRef.current = null;
+        }
+    }, [consultation.id, roomId]);
 
     useEffect(() => {
         let isActive = true;
 
-        const initializeLiveKitCall = async () => {
-            if (!LIVEKIT_URL || !LIVEKIT_TOKEN_SERVER_ID) {
-                if (!isActive) return;
-                setErrorMessage('Missing LiveKit configuration. Add VITE_LIVEKIT_URL and VITE_LIVEKIT_TOKEN_SERVER_ID to your frontend .env file.');
-                setCallState('FAILED');
-                setStatusMessage('Configuration required');
-                return;
-            }
-
+        const initializeCall = async () => {
             try {
-                const room = new Room({
-                    adaptiveStream: true,
-                    dynacast: false,
-                    publishDefaults: { simulcast: false },
+                const socket = io(AUDIO_CALL_URL, {
+                    transports: ['websocket', 'polling'],
+                    reconnection: true,
+                    timeout: 20000,
+                    auth: { token: getAuthHeader().Authorization?.replace('Bearer ', '') || '' },
                 });
+                socketRef.current = socket;
 
-                roomRef.current = room;
-
-                room.on(RoomEvent.ConnectionStateChanged, (state) => {
+                socket.on('connect', async () => {
                     if (!isActive) return;
-                    console.log('[LIVEKIT] state change:', state);
-                    if (state === 'connected') {
-                        setCallState('CONNECTED');
-                        setStatusMessage('Connected to LiveKit room');
-                        setConnectionQuality('Excellent');
-                    } else if (state === 'connecting') {
-                        setCallState('CONNECTING');
-                        setStatusMessage('Connecting to LiveKit room...');
-                    } else if (state === 'reconnecting') {
-                        setStatusMessage('Reconnecting to LiveKit room...');
-                    }
-                });
-
-                room.on(RoomEvent.ParticipantConnected, (participant) => {
-                    if (!isActive) return;
-                    setParticipantStatus(`${participant.identity} joined the room`);
-                });
-
-                room.on(RoomEvent.ParticipantDisconnected, (participant) => {
-                    if (!isActive) return;
-                    setParticipantStatus(`${participant.identity} left the room`);
-                });
-
-                room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
-                    if (!isActive) return;
-                    if (speakers.length > 0) {
-                        setParticipantStatus(`${speakers.length} participant(s) speaking`);
-                    }
-                });
-
-                room.on(RoomEvent.Disconnected, () => {
-                    if (!isActive) return;
-                    setCallState('CLOSED');
-                    setStatusMessage('LiveKit call disconnected');
-                });
-
-                try {
-                    const tokenSource = TokenSource.developmentTokenServer(LIVEKIT_TOKEN_SERVER_ID);
-                    const tokenResponse = await tokenSource.fetch({
-                        roomName,
-                        participantIdentity,
-                        participantName: currentUser.name,
+                    socket.emit('user:register', {
+                        userId: currentUser.id,
+                        name: currentUser.name,
+                        role: isDoctor ? 'PSYCHOLOGIST' : 'USER',
                     });
 
-                    await room.connect(LIVEKIT_URL, tokenResponse.participantToken, { autoSubscribe: true });
-                    await room.localParticipant.setMicrophoneEnabled(true);
-                    await room.localParticipant.setCameraEnabled(false);
+                    try {
+                        const res = await fetch(`/api/calls/${consultation.id}/join`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                        });
+                        const data = await res.json();
 
-                    setCallState('CONNECTED');
-                    setStatusMessage('Microphone live · audio-only room');
-                    setParticipantStatus('Connected to consultation room');
-                } catch (err) {
-                    console.error('[LIVEKIT] connection error:', err);
-                    if (!isActive) return;
-                    setMicPermissionDenied(true);
-                    setErrorMessage('Unable to connect to LiveKit. Please allow microphone access and confirm your token server is valid.');
+                        if (!res.ok || !data?.success) {
+                            throw new Error(data?.error || 'Not authorized to join this consultation.');
+                        }
+
+                        const joinedRoomId = data.roomId || roomId;
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            audio: true,
+                            video: false,
+                        });
+                        localStreamRef.current = stream;
+
+                        const pc = new RTCPeerConnection({
+                            iceServers: data.iceServers || [{ urls: 'stun:stun.l.google.com:19302' }],
+                        });
+                        peerRef.current = pc;
+
+                        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+                        pc.onicecandidate = (event) => {
+                            if (!event.candidate) return;
+                            socket.emit('call:ice-candidate', {
+                                consultationId: consultation.id,
+                                roomId: joinedRoomId,
+                                candidate: event.candidate,
+                            });
+                        };
+
+                        pc.ontrack = (event) => {
+                            const [remoteStream] = event.streams;
+                            if (!remoteStream) return;
+
+                            const remoteAudio = new Audio();
+                            remoteAudio.srcObject = remoteStream;
+                            remoteAudio.autoplay = true;
+                            remoteAudio.setAttribute('playsinline', 'true');
+                            remoteAudio.muted = false;
+                            remoteAudio.play().catch(() => undefined);
+                            setParticipantStatus('Connected to consultation room');
+                            setCallState('CONNECTED');
+                            setStatusMessage('Connected · two-way audio live');
+                            setConnectionQuality('Excellent');
+                        };
+
+                        pc.onconnectionstatechange = () => {
+                            if (!isActive) return;
+                            if (pc.connectionState === 'connected') {
+                                setCallState('CONNECTED');
+                                setStatusMessage('Connected · two-way audio live');
+                                setConnectionQuality('Excellent');
+                            } else if (pc.connectionState === 'connecting') {
+                                setCallState('CONNECTING');
+                                setStatusMessage('Connecting to audio consultation room...');
+                            } else if (pc.connectionState === 'failed') {
+                                setCallState('FAILED');
+                                setStatusMessage('Audio connection failed');
+                            }
+                        };
+
+                        socket.emit('call:join', {
+                            consultationId: consultation.id,
+                            roomId: joinedRoomId,
+                            participantId: currentUser.id,
+                            userId: currentUser.id,
+                            doctorId: consultation.doctorId,
+                            role: isDoctor ? 'PSYCHOLOGIST' : 'USER',
+                        });
+
+                        socket.on('call:ready', ({ roomId: readyRoomId }) => {
+                            if (!isActive || !peerRef.current || readyRoomId !== joinedRoomId || offerCreatedRef.current) return;
+                            offerCreatedRef.current = true;
+                            void (async () => {
+                                const offer = await peerRef.current!.createOffer();
+                                await peerRef.current!.setLocalDescription(offer);
+                                socket.emit('call:offer', {
+                                    consultationId: consultation.id,
+                                    roomId: joinedRoomId,
+                                    sdp: offer,
+                                });
+                            })();
+                        });
+
+                        socket.on('call:offer', async ({ sdp, senderId }) => {
+                            if (!peerRef.current || senderId === socket.id) return;
+                            await peerRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+                            const answer = await peerRef.current.createAnswer();
+                            await peerRef.current.setLocalDescription(answer);
+                            socket.emit('call:answer', {
+                                consultationId: consultation.id,
+                                roomId: joinedRoomId,
+                                sdp: answer,
+                            });
+                        });
+
+                        socket.on('call:answer', async ({ sdp, senderId }) => {
+                            if (!peerRef.current || senderId === socket.id) return;
+                            await peerRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+                        });
+
+                        socket.on('call:ice-candidate', async ({ candidate, senderId }) => {
+                            if (!peerRef.current || senderId === socket.id || !candidate) return;
+                            try {
+                                await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+                            } catch (err) {
+                                console.warn('ICE add failed', err);
+                            }
+                        });
+
+                        socket.on('call:ended', () => {
+                            setCallState('CLOSED');
+                            setStatusMessage('Consultation ended');
+                            cleanupCall();
+                            onCallEnded(durationSeconds);
+                        });
+
+                        socket.on('call:peer_disconnected', () => {
+                            setParticipantStatus('Remote participant disconnected');
+                        });
+                    } catch (error) {
+                        console.error('Join call failed', error);
+                        setMicPermissionDenied(true);
+                        setErrorMessage(error instanceof Error ? error.message : 'Unable to start microphone and join consultation.');
+                        setCallState('FAILED');
+                        setStatusMessage('Could not join consultation');
+                    }
+                });
+
+                socket.on('connect_error', (err) => {
+                    console.error('Socket connect error', err);
+                    setErrorMessage('Unable to reach the audio call server.');
                     setCallState('FAILED');
                     setStatusMessage('Connection failed');
-                    return;
-                }
+                });
 
-                const roomState = room.state;
-                if (roomState === 'connected' && isActive) {
-                    setCallState('CONNECTED');
-                }
-
-            } catch (err) {
-                console.error('[LIVEKIT] initialization failed:', err);
-                if (isActive) {
-                    setErrorMessage('LiveKit audio room failed to initialize.');
-                    setCallState('FAILED');
-                    setStatusMessage('Initialization failed');
-                }
+                socket.on('disconnect', () => {
+                    if (!isActive) return;
+                    setParticipantStatus('Signal connection lost');
+                });
+            } catch (error) {
+                console.error('Failed to initialize audio call', error);
+                setErrorMessage('Unable to initialize the secure audio consultation.');
+                setCallState('FAILED');
+                setStatusMessage('Initialization failed');
             }
         };
 
-        void initializeLiveKitCall();
+        void initializeCall();
 
         return () => {
             isActive = false;
             cleanupCall();
         };
-    }, [cleanupCall, currentUser.id, currentUser.name, participantIdentity, roomName]);
+    }, [cleanupCall, consultation.doctorId, consultation.id, currentUser.id, currentUser.name, durationSeconds, isDoctor, onCallEnded, roomId]);
 
     useEffect(() => {
         if (callState === 'CONNECTED') {
@@ -181,13 +266,13 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
         };
     }, [callState]);
 
-    const toggleMute = async () => {
-        const room = roomRef.current;
-        if (!room) return;
-
-        const nextMuted = !isMuted;
-        await room.localParticipant.setMicrophoneEnabled(!nextMuted);
-        setIsMuted(nextMuted);
+    const toggleMute = () => {
+        const stream = localStreamRef.current;
+        if (!stream) return;
+        const audioTrack = stream.getAudioTracks()[0];
+        if (!audioTrack) return;
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsMuted(!audioTrack.enabled);
     };
 
     const handleEndCallConfirmed = async () => {
@@ -200,7 +285,7 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
             await fetch(`/api/consultations/${consultation.id}/end`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-                body: JSON.stringify({ duration: durationSeconds })
+                body: JSON.stringify({ duration: durationSeconds }),
             });
         } catch (err) {
             console.error('Failed to complete consultation API call:', err);
@@ -221,7 +306,7 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                 <div className="bg-slate-950/80 px-6 py-3 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400">
                     <div className="flex items-center gap-2 text-emerald-400 font-mono font-medium">
                         <Lock className="w-3.5 h-3.5" />
-                        <span>CONFIDENTIAL LIVEKIT VOICE SESSION</span>
+                        <span>CONFIDENTIAL AUDIO SESSION</span>
                     </div>
                     <div className="flex items-center gap-3">
                         <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">Close</button>
@@ -238,7 +323,7 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                         <div className="mb-6 p-4 rounded-xl bg-red-950/60 border border-red-800 text-red-300 text-sm max-w-md flex items-start gap-3">
                             <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                             <div>
-                                <p className="font-semibold text-red-200">LiveKit Session Error</p>
+                                <p className="font-semibold text-red-200">Audio Session Error</p>
                                 <p className="text-xs text-red-300/90 mt-1">{errorMessage}</p>
                             </div>
                         </div>
@@ -300,7 +385,7 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
 
                     <div className="mt-8 flex items-center gap-6">
                         <button
-                            onClick={() => void toggleMute()}
+                            onClick={() => toggleMute()}
                             disabled={callState !== 'CONNECTED'}
                             className={`p-4 rounded-full border shadow-lg transition-all transform active:scale-95 ${isMuted ? 'bg-red-600/90 hover:bg-red-600 border-red-500 text-white' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-emerald-400 hover:text-emerald-300'}`}
                             title={isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
