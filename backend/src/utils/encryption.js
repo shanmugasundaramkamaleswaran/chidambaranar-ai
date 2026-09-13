@@ -1,7 +1,11 @@
+import 'dotenv/config';
 import crypto from 'crypto';
 
-const DEFAULT_SECRET = process.env.JWT_SECRET || 'chidambaranar_ai_sentinel_super_secret_2026';
-const KEY = crypto.createHash('sha256').update(process.env.MESSAGE_ENCRYPTION_KEY || DEFAULT_SECRET).digest();
+const MESSAGE_ENCRYPTION_KEY = process.env.MESSAGE_ENCRYPTION_KEY;
+if (!MESSAGE_ENCRYPTION_KEY || MESSAGE_ENCRYPTION_KEY.length < 32) {
+    throw new Error('MESSAGE_ENCRYPTION_KEY must be configured with at least 32 characters.');
+}
+const KEY = crypto.createHash('sha256').update(MESSAGE_ENCRYPTION_KEY).digest();
 
 export function encryptText(plainText) {
     if (!plainText || typeof plainText !== 'string') return 'enc:';
@@ -28,8 +32,7 @@ export function decryptText(encodedText) {
         decipher.setAuthTag(tag);
         const value = Buffer.concat([decipher.update(encrypted), decipher.final()]);
         return value.toString('utf8');
-    } catch (error) {
-        console.error('Message decryption failed.', error);
+    } catch {
         return '[encrypted message unavailable]';
     }
 }

@@ -1,6 +1,11 @@
+import 'dotenv/config';
 import jwt from 'jsonwebtoken';
+import { getDb } from './db.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'chidambaranar_ai_sentinel_super_secret_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+    throw new Error('JWT_SECRET must be configured with at least 32 characters.');
+}
 const JWT_EXPIRES_IN = '12h';
 
 /**
@@ -22,7 +27,16 @@ export function requireAuth(req, res, next) {
     const token = authHeader.slice(7);
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded; // { id, role, orgId, email }
+        const currentUser = getDb().users.find(user => user.id === decoded.id);
+        if (!currentUser) return res.status(401).json({ success: false, error: 'Account is no longer active.' });
+        const currentRole = currentUser.rbacRole || (
+            currentUser.role === 'doctor' ? 'PSYCHOLOGIST' :
+                currentUser.role === 'company_admin' ? 'ORGANIZATION_OFFICER' : 'USER'
+        );
+        if (currentRole !== decoded.role || currentUser.orgId !== decoded.orgId) {
+            return res.status(401).json({ success: false, error: 'Session is no longer valid. Please log in again.' });
+        }
+        req.user = { ...decoded, role: currentRole, orgId: currentUser.orgId };
         next();
     } catch {
         return res.status(401).json({ success: false, error: 'Invalid or expired session. Please log in again.' });

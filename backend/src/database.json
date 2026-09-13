@@ -464,8 +464,7 @@
       "userId": "usr_1",
       "doctorId": "usr_doc1",
       "status": "REQUESTED",
-      "consultationType": "audio",
-      "roomId": null,
+      "consultationType": "text",
       "requested_at": "2026-09-12T06:31:23.933Z",
       "accepted_at": null,
       "started_at": null,
@@ -670,7 +669,7 @@
       "actorId": "usr_1",
       "action": "CREATE_CONSULTATION_REQUEST",
       "targetId": "cons_1789194683933",
-      "details": "Requested audio consultation with doctor usr_doc1."
+      "details": "Requested private psychologist consultation with doctor usr_doc1."
     },
     {
       "id": "log_1789194676988",

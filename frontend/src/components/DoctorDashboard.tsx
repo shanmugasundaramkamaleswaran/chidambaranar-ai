@@ -3,7 +3,7 @@ import { User, Consultation, WellbeingCheckin, RiskEvaluation, Organization } fr
 import { Stethoscope, UserCheck, AlertTriangle, Calendar, Clock, CheckCircle2, FileText, Lock, ChevronRight, ShieldCheck, UserX, MessageSquare, Plus, Building2, History, XCircle, Sparkles } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { PsychologistNotesModal } from './PsychologistNotesModal';
-import { CallHistoryModal } from './CallHistoryModal';
+import { ConsultationHistoryModal } from './ConsultationHistoryModal';
 import { PsychologistChat } from './chat/PsychologistChat';
 import { getAuthHeader } from '../auth';
 
@@ -48,8 +48,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({
-                    patientId,
-                    apiKey: 'AQ.Ab8RN6ICsngn6sM7h2F3MLYx76T6uHAti2EeifVdieiz5mYCTw'
+                    patientId
                 })
             });
             const data = await res.json();
@@ -171,7 +170,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs border border-slate-700 transition"
                     >
                         <History className="w-4 h-4 text-emerald-400" />
-                        <span>Call History</span>
+                        <span>Consultation History</span>
                     </button>
                 </div>
             </div>
@@ -241,7 +240,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
                     <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-lg font-bold text-white">Consultation Queue</h2>
-                            <p className="text-xs text-slate-400">Real-time voice session requests.</p>
+                            <p className="text-xs text-slate-400">Private psychologist consultation requests.</p>
                         </div>
                         <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
                             {consultations.length} ACTIVE
@@ -276,14 +275,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
                                                             await fetch(`/api/consultations/${c.id}/accept`, {
                                                                 method: 'POST',
                                                                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-                                                                body: JSON.stringify({ doctorId: doctor.id, consultationType: 'audio' })
+                                                                body: JSON.stringify({ doctorId: doctor.id })
                                                             });
                                                             fetchDoctorData();
                                                         } catch (e) { console.error(e); }
                                                     }}
                                                     className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md"
                                                 >
-                                                    Accept Call
+                                                    Accept Request
                                                 </button>
                                                 <button
                                                     onClick={async () => {
@@ -298,7 +297,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
                                                     }}
                                                     className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-semibold"
                                                 >
-                                                    Reject Call
+                                                    Reject Request
                                                 </button>
                                             </>
                                         )}
@@ -482,7 +481,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
 
             {/* CONSULTATION HISTORY MODAL */}
             {isHistoryModalOpen && (
-                <CallHistoryModal
+                <ConsultationHistoryModal
                     consultations={consultations}
                     currentUser={doctor}
                     onClose={() => setIsHistoryModalOpen(false)}

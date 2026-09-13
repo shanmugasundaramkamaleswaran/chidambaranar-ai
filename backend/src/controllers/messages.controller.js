@@ -1,5 +1,5 @@
-import { getDb, saveDb } from '../db.js';
-import { createConversation, assertConversationAccess, getConversationsForUser, sendMessage, getConversationMessages, markMessageRead, deleteMessage } from '../services/messages.service.js';
+import { getDb } from '../db.js';
+import { createConversation, getConversationsForUser, sendMessage, getConversationMessages, markMessageRead, deleteMessage, MAX_MESSAGE_LENGTH } from '../services/messages.service.js';
 
 export async function createConversationController(req, res) {
     try {
@@ -14,18 +14,11 @@ export async function createConversationController(req, res) {
             return res.status(403).json({ success: false, error: 'You can only create conversations assigned to you.' });
         }
 
-        const existing = (db.conversations || []).find((conversation) =>
-            conversation.employeeId === employeeId && conversation.psychologistId === psychologistId
-        );
-
-        if (existing) {
-            return res.json({ success: true, conversation: existing });
-        }
-
         const conversation = createConversation(db, { employeeId, psychologistId });
-        return res.status(201).json({ success: true, conversation });
+        return res.json({ success: true, conversation });
     } catch (error) {
-        return res.status(400).json({ success: false, error: error.message || 'Unable to create conversation.' });
+        const status = error.message.includes('authorized') || error.message.includes('organization') ? 403 : 400;
+        return res.status(status).json({ success: false, error: error.message || 'Unable to create conversation.' });
     }
 }
 
@@ -43,14 +36,10 @@ export function getConversationMessagesController(req, res) {
     try {
         const { conversationId } = req.params;
         const db = getDb();
-        if (!assertConversationAccess(db, conversationId, req.user.id)) {
-            return res.status(403).json({ success: false, error: 'Forbidden: this conversation is not assigned to your account.' });
-        }
-
-        const messages = getConversationMessages(db, conversationId, req.user.id);
+        const messages = getConversationMessages(db, conversationId, req.user.id, req.user.role);
         return res.json({ success: true, messages });
     } catch (error) {
-        return res.status(400).json({ success: false, error: error.message });
+        return res.status(403).json({ success: false, error: 'Forbidden: this conversation is not assigned to your account.' });
     }
 }
 
@@ -60,14 +49,14 @@ export function sendMessageController(req, res) {
         const { text } = req.body || {};
         const db = getDb();
 
-        if (!assertConversationAccess(db, conversationId, req.user.id)) {
-            return res.status(403).json({ success: false, error: 'Forbidden: you are not a participant in this conversation.' });
+        if (typeof text !== 'string' || text.length > MAX_MESSAGE_LENGTH) {
+            return res.status(400).json({ success: false, error: `Message must be text up to ${MAX_MESSAGE_LENGTH} characters.` });
         }
 
         const message = sendMessage(db, conversationId, req.user.id, req.user.role, text);
         return res.status(201).json({ success: true, message });
     } catch (error) {
-        return res.status(400).json({ success: false, error: error.message || 'Unable to send message.' });
+        return res.status(error.message.includes('authorized') ? 403 : 400).json({ success: false, error: error.message || 'Unable to send message.' });
     }
 }
 
@@ -75,7 +64,7 @@ export function markMessageReadController(req, res) {
     try {
         const { messageId } = req.params;
         const db = getDb();
-        const updated = markMessageRead(db, messageId, req.user.id);
+        const updated = markMessageRead(db, messageId, req.user.id, req.user.role);
         if (!updated) {
             return res.status(404).json({ success: false, error: 'Message not found.' });
         }
@@ -89,7 +78,7 @@ export function deleteMessageController(req, res) {
     try {
         const { messageId } = req.params;
         const db = getDb();
-        const deleted = deleteMessage(db, messageId, req.user.id);
+        const deleted = deleteMessage(db, messageId, req.user.id, req.user.role);
         if (!deleted) {
             return res.status(404).json({ success: false, error: 'Message not found.' });
         }

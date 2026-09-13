@@ -60,8 +60,7 @@ export const PsychologistSelectModal: React.FC<PsychologistSelectModalProps> = (
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({
                     doctorId: selectedDocId,
-                    reason,
-                    consultationType: 'audio'
+                    reason
                 })
             });
 
@@ -90,7 +89,7 @@ export const PsychologistSelectModal: React.FC<PsychologistSelectModalProps> = (
                         </div>
                         <div>
                             <h3 className="text-base font-bold text-slate-100">Talk to a Psychologist</h3>
-                            <p className="text-xs text-slate-400">Request a confidential, real-time voice-only consultation</p>
+                            <p className="text-xs text-slate-400">Request a confidential psychologist consultation</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition">
@@ -187,7 +186,7 @@ export const PsychologistSelectModal: React.FC<PsychologistSelectModalProps> = (
                     <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-xs text-slate-400 flex items-start gap-2.5">
                         <Shield className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                         <div>
-                            <span className="font-semibold text-slate-300">Strict Confidentiality Policy:</span> Your company administrator cannot access this consultation, audio stream, or doctor notes. AI stress models do not record or analyze audio.
+                            <span className="font-semibold text-slate-300">Strict Confidentiality Policy:</span> Your company administrator cannot access this private conversation or doctor notes.
                         </div>
                     </div>
 

@@ -3,15 +3,14 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/
 import { getFirestore, collection, addDoc, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 
-// Firebase Configuration using User's VAPID / Firebase Key
 const firebaseConfig = {
-    apiKey: "BDNbXgI1dZuytc3z_R1ntWp_UpxU9tPcKmh9KNF-SX3KwAqPUumgVHLcg8-dG1-rlrQyx-h1wasmgtog551RZUw",
-    authDomain: "sentinel-wellbeing-app.firebaseapp.com",
-    projectId: "sentinel-wellbeing-app",
-    storageBucket: "sentinel-wellbeing-app.appspot.com",
-    messagingSenderId: "983210492810",
-    appId: "1:983210492810:web:8a91b2c3d4e5f6789",
-    vapidKey: "BDNbXgI1dZuytc3z_R1ntWp_UpxU9tPcKmh9KNF-SX3KwAqPUumgVHLcg8-dG1-rlrQyx-h1wasmgtog551RZUw"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
 };
 
 // Initialize Firebase App

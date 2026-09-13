@@ -4,28 +4,6 @@ import {
     AlertCircle, CheckCircle, Hash, Lock, Mail, Fingerprint, ChevronRight
 } from 'lucide-react';
 import { ROLES, RBACRole, AuthUser, AuthOrganization, saveSession } from '../auth';
-import { User, Organization } from '../types';
-
-// Demo credentials hint data
-const DEMO_CREDS = {
-    [ROLES.USER]: [
-        { email: 'john.vance@aegis-defense.com', password: 'officer1234', org: 'org_1', name: 'Officer John Vance' },
-        { email: 'maya.lin@aegis-defense.com', password: 'employee1234', org: 'org_1', name: 'Engineer Maya Lin' },
-    ],
-    [ROLES.PSYCHOLOGIST]: [
-        { email: 'dr.connor@sentinel-medical.org', password: 'doctor1234', org: 'org_1', name: 'Dr. Sarah Connor, MD' },
-        { email: 'dr.marcus@sentinel-medical.org', password: 'doctor5678', org: 'org_1', name: 'Dr. Marcus Vance, PhD' },
-    ],
-    [ROLES.ORGANIZATION_OFFICER]: [
-        { email: 'alex.mercer@aegis-defense.com', password: 'admin1234', org: 'org_1', name: 'Cmdr. Alex Mercer' },
-    ],
-};
-
-const DEMO_ORGS = [
-    { id: 'org_1', code: 'AEGIS', name: 'Aegis Defense' },
-    { id: 'org_2', code: 'VANGUARD', name: 'Vanguard Cyber' },
-    { id: 'org_3', code: 'HORIZON', name: 'Horizon Logistics' },
-];
 
 interface PortalLoginProps {
     portal: RBACRole;
@@ -125,42 +103,12 @@ export const PortalLoginForm: React.FC<PortalLoginProps> = ({ portal, onLoginSuc
                     setOrgVerified(data.organization);
                     setOrgError('');
                 } else {
-                    // Check local demo orgs fallback
-                    const localMatch = DEMO_ORGS.find(
-                        o => o.id.toLowerCase() === trimmed.toLowerCase() || o.code.toLowerCase() === trimmed.toLowerCase()
-                    );
-                    if (localMatch) {
-                        setOrgVerified({
-                            id: localMatch.id,
-                            name: localMatch.name,
-                            code: localMatch.code,
-                            type: 'Enterprise Unit',
-                            employeeCount: 1000
-                        });
-                        setOrgError('');
-                    } else {
-                        setOrgVerified(null);
-                        setOrgError('Invalid Organization ID or Code');
-                    }
-                }
-            } catch {
-                // Fallback check against local DEMO_ORGS on network error
-                const localMatch = DEMO_ORGS.find(
-                    o => o.id.toLowerCase() === trimmed.toLowerCase() || o.code.toLowerCase() === trimmed.toLowerCase()
-                );
-                if (localMatch) {
-                    setOrgVerified({
-                        id: localMatch.id,
-                        name: localMatch.name,
-                        code: localMatch.code,
-                        type: 'Enterprise Unit',
-                        employeeCount: 1000
-                    });
-                    setOrgError('');
-                } else {
                     setOrgVerified(null);
                     setOrgError('Invalid Organization ID or Code');
                 }
+            } catch {
+                setOrgVerified(null);
+                setOrgError('Unable to verify organization. Please try again.');
             } finally {
                 setIsVerifyingOrg(false);
             }
@@ -221,12 +169,6 @@ export const PortalLoginForm: React.FC<PortalLoginProps> = ({ portal, onLoginSuc
         }
     };
 
-    const fillDemo = (cred: { email: string; password: string; org?: string }) => {
-        setEmail(cred.email);
-        setPassword(cred.password);
-        if (cred.org && config.requiresOrg) setOrgInput(cred.org);
-    };
-
     return (
         <div className="min-h-[85vh] flex items-center justify-center px-4 py-12">
             <div className="w-full max-w-lg bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden backdrop-blur-xl">
@@ -272,25 +214,6 @@ export const PortalLoginForm: React.FC<PortalLoginProps> = ({ portal, onLoginSuc
                         >
                             Create Account
                         </button>
-                    </div>
-                )}
-
-                {/* Demo credentials chips */}
-                {DEMO_CREDS[portal]?.length > 0 && mode === 'login' && (
-                    <div className="mb-5 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-                        <p className="text-[10px] font-mono text-slate-500 mb-2 uppercase tracking-wider">Demo Accounts (click to fill)</p>
-                        <div className="flex flex-wrap gap-2">
-                            {DEMO_CREDS[portal].map((cred, i) => (
-                                <button
-                                    key={i}
-                                    type="button"
-                                    onClick={() => fillDemo(cred)}
-                                    className={`text-[10px] font-mono px-2.5 py-1 rounded-lg border transition-all bg-slate-950 border-slate-700 text-slate-400 hover:${config.border} hover:text-slate-100`}
-                                >
-                                    {cred.name}
-                                </button>
-                            ))}
-                        </div>
                     </div>
                 )}
 
@@ -349,17 +272,6 @@ export const PortalLoginForm: React.FC<PortalLoginProps> = ({ portal, onLoginSuc
                                 className={`w-full bg-slate-950 border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-colors font-mono
                                     ${orgVerified ? 'border-emerald-500/70' : orgError ? 'border-rose-500/70' : 'border-slate-800 focus:border-cyan-500'}`}
                             />
-                            {/* Quick-fill chips */}
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {DEMO_ORGS.map(org => (
-                                    <button key={org.id} type="button" onClick={() => setOrgInput(org.id)}
-                                        className={`text-[10px] font-mono px-2.5 py-1 rounded-lg border transition-all
-                                            ${orgInput === org.id ? config.badge : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'}`}
-                                    >
-                                        {org.id} / {org.code}
-                                    </button>
-                                ))}
-                            </div>
                             {orgVerified && (
                                 <div className={`mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-mono ${config.badge}`}>
                                     <Building2 className="w-3.5 h-3.5 shrink-0" />
@@ -483,7 +395,7 @@ export const PortalSelector: React.FC<PortalSelectorProps> = ({ onSelectPortal }
             accent: 'text-cyan-400',
             bgAccent: 'bg-cyan-950/50',
             badge: 'bg-cyan-950/60 text-cyan-300 border border-cyan-800',
-            features: ['Personal stress & mood tracking', 'ABIMANYUAI AI Philosopher', 'Request psychologist consultation', 'Voice consultations', 'Consent & privacy settings'],
+            features: ['Personal stress & mood tracking', 'ABIMANYUAI AI Philosopher', 'Request psychologist consultation', 'Private text conversations', 'Consent & privacy settings'],
         },
         {
             role: ROLES.PSYCHOLOGIST as RBACRole,
@@ -496,7 +408,7 @@ export const PortalSelector: React.FC<PortalSelectorProps> = ({ onSelectPortal }
             accent: 'text-emerald-400',
             bgAccent: 'bg-emerald-950/50',
             badge: 'bg-emerald-950/60 text-emerald-300 border border-emerald-800',
-            features: ['Authorized patient profiles', 'Consultation requests', 'Secure voice consultation', 'Clinical notes & follow-up', 'AI clinical reports'],
+            features: ['Authorized patient profiles', 'Consultation requests', 'Secure text conversations', 'Clinical notes & follow-up', 'AI clinical reports'],
         },
     ];
 

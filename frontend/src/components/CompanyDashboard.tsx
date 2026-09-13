@@ -274,15 +274,15 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ admin, organ
 
             </div>
 
-            {/* AUTHORIZED OVERRIDE: INDIVIDUAL PERSONNEL STRESS (Requested by User) */}
+            {/* PRIVACY-PRESERVING DEPARTMENT STRESS AGGREGATES */}
             <div className="p-6 rounded-3xl glass-panel border border-slate-800 space-y-4">
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-base font-bold text-white flex items-center gap-2">
                             <Users className="w-5 h-5 text-amber-500" />
-                            Personnel Stress Roster
+                            Department Stress Aggregates
                         </h3>
-                        <p className="text-xs text-slate-400">Monitoring authorized individual baseline deviations.</p>
+                        <p className="text-xs text-slate-400">Only department-level totals and average risk are shown.</p>
                     </div>
                 </div>
 
@@ -293,13 +293,9 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ admin, organ
                         personnelList.map(p => (
                             <div key={p.id} className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    {p.avatar ? (
-                                        <img src={p.avatar} alt={p.name} className="w-10 h-10 rounded-full object-cover border border-slate-700" />
-                                    ) : (
-                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-xs font-bold">
-                                            {p.name.charAt(0)}
-                                        </div>
-                                    )}
+                                    <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-amber-300 text-xs font-bold">
+                                        {p.employeeCount}
+                                    </div>
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <p className="font-bold text-white text-sm">{p.name}</p>
@@ -308,10 +304,10 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ admin, organ
                                                         p.riskLevel === 'YELLOW' ? 'bg-amber-950 text-amber-300 border-amber-800' :
                                                             'bg-emerald-950 text-emerald-300 border-emerald-800'
                                                 }`}>
-                                                {p.riskLevel} RISK (Score: {p.riskScore})
+                                                {p.riskLevel} RISK (Average: {p.averageRiskScore})
                                             </span>
                                         </div>
-                                        <p className="text-xs text-slate-400">{p.title} | Last Checkin: {p.latestCheckinDate}</p>
+                                        <p className="text-xs text-slate-400">{p.employeeCount} employees represented</p>
                                     </div>
                                 </div>
                             </div>

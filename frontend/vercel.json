@@ -5,10 +5,6 @@
       "destination": "https://chidambaranar-ai-backend.onrender.com/api/:path*"
     },
     {
-      "source": "/socket.io/:path*",
-      "destination": "https://chidambaranar-ai-backend.onrender.com/socket.io/:path*"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

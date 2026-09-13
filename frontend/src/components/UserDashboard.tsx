@@ -4,7 +4,7 @@ import { saveCheckinToCloudStorage } from '../firebase';
 import { ShieldAlert, Heart, Plus, Sparkles, CheckCircle2, Lock, Send, Building2, Stethoscope, History, MessageSquare } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { PsychologistSelectModal } from './PsychologistSelectModal';
-import { CallHistoryModal } from './CallHistoryModal';
+import { ConsultationHistoryModal } from './ConsultationHistoryModal';
 import { PsychologistChat } from './chat/PsychologistChat';
 import { getAuthHeader } from '../auth';
 
@@ -151,8 +151,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({
                     doctorId: 'usr_doc1',
-                    reason: consultReason,
-                    consultationType: 'audio'
+                    reason: consultReason
                 })
             });
             const data = await res.json();
@@ -186,6 +185,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
 
     const riskLevel = latestEval?.level || 'GREEN';
     const riskScore = latestEval?.score || 25;
+    const activeConsultation = userConsultations.find(consultation =>
+        consultation.status === 'ACCEPTED' || consultation.status === 'IN_PROGRESS'
+    );
 
     let riskColor = 'text-emerald-400 border-emerald-500/50 bg-emerald-950/40';
     let riskBadge = 'bg-emerald-950 text-emerald-300 border-emerald-800';
@@ -244,15 +246,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
 
                 <div className="flex flex-wrap items-center gap-3">
                     <button
-                        onClick={() => {
-                            setSelectedPsychologistId('usr_doc1');
-                            setSelectedPsychologistName('Dr. Sarah Connor');
-                            setPsychologistChatOpen(true);
-                        }}
+                        onClick={() => setIsSelectModalOpen(true)}
                         className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs shadow-lg shadow-emerald-950/60 border border-emerald-400/30 transition-all hover:scale-[1.02]"
                     >
                         <MessageSquare className="w-4 h-4" />
-                        <span>Chat with Psychologist</span>
+                        <span>Request Psychologist</span>
                     </button>
 
                     <button
@@ -260,7 +258,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                         className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs border border-slate-700 transition-all"
                     >
                         <History className="w-4 h-4 text-emerald-400" />
-                        <span>Call History</span>
+                        <span>Consultation History</span>
                     </button>
 
                     <button
@@ -443,7 +441,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                         {consultSuccess && (
                             <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-700 text-xs text-emerald-300 flex items-center gap-2">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                <span>Calling Psychologist... Waiting for Psychologist to accept</span>
+                                <span>Request sent. The secure conversation opens after acceptance.</span>
                             </div>
                         )}
 
@@ -454,6 +452,19 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                         >
                             {isRequestingDoctor ? 'Submitting Request...' : 'Send Consultation Request'}
                         </button>
+                        {activeConsultation && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedPsychologistId(activeConsultation.doctorId);
+                                    setSelectedPsychologistName(activeConsultation.doctorName || 'Psychologist');
+                                    setPsychologistChatOpen(true);
+                                }}
+                                className="w-full py-3 px-4 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs shadow-md transition-colors"
+                            >
+                                Open Secure Psychologist Conversation
+                            </button>
+                        )}
                     </form>
                 </div>
 
@@ -649,10 +660,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                     currentUser={user}
                     onClose={() => setIsSelectModalOpen(false)}
                     onRequestSent={(newConsultation) => {
-                        setSelectedPsychologistId(newConsultation?.doctorId || 'usr_doc1');
-                        setSelectedPsychologistName(newConsultation?.doctorName || 'Psychologist');
                         setIsSelectModalOpen(false);
-                        setPsychologistChatOpen(true);
                         fetchDashboardData();
                     }}
                 />
@@ -660,7 +668,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
 
             {/* CONSULTATION HISTORY MODAL */}
             {isHistoryModalOpen && (
-                <CallHistoryModal
+                <ConsultationHistoryModal
                     consultations={userConsultations}
                     currentUser={user}
                     onClose={() => setIsHistoryModalOpen(false)}

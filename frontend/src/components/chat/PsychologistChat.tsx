@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Sparkles, UserCircle2, Clock3 } from 'lucide-react';
 import { getAuthHeader } from '../../auth';
 import { ChatMessage } from './ChatMessage';
@@ -37,6 +37,8 @@ export const PsychologistChat: React.FC<PsychologistChatProps> = ({
 }) => {
     const [messages, setMessages] = useState<ChatMessageType[]>([]);
     const [loading, setLoading] = useState(false);
+    const [sending, setSending] = useState(false);
+    const [error, setError] = useState('');
     const [input, setInput] = useState('');
     const [conversationId, setConversationId] = useState<string | null>(null);
     const viewerRole = currentUser.role === 'doctor' || currentUser.role === 'PSYCHOLOGIST' ? 'PSYCHOLOGIST' : 'USER';
@@ -45,41 +47,43 @@ export const PsychologistChat: React.FC<PsychologistChatProps> = ({
     const peerLabel = isPsychologistView ? employeeName : psychologistName;
     const peerSubLabel = isPsychologistView ? 'Assigned patient' : 'Online / Available';
 
-    const ensureConversation = useMemo(() => {
-        return async () => {
-            if (!employeeId || !psychologistId) return;
-            const res = await fetch('/api/conversations', {
+    const ensureConversation = useCallback(async (): Promise<string | null> => {
+        if (!employeeId || !psychologistId) return null;
+        const res = await fetch('/api/conversations', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({ employeeId, psychologistId }),
             });
-            const data = await res.json();
-            if (data?.conversation?.id) {
-                setConversationId(data.conversation.id);
-            }
-        };
+        const data = await res.json();
+        if (!res.ok || !data?.conversation?.id) {
+            throw new Error(data?.error || 'This conversation is not currently authorized.');
+        }
+        setConversationId(data.conversation.id);
+        return data.conversation.id;
     }, [employeeId, psychologistId]);
 
     useEffect(() => {
         const loadMessages = async () => {
             setLoading(true);
             try {
-                await ensureConversation();
-                if (!conversationId) return;
-                const res = await fetch(`/api/conversations/${conversationId}/messages`, {
+                setError('');
+                const activeConversationId = await ensureConversation();
+                if (!activeConversationId) return;
+                const res = await fetch(`/api/conversations/${activeConversationId}/messages`, {
                     headers: { ...getAuthHeader() },
                 });
                 const data = await res.json();
-                if (res.ok && Array.isArray(data.messages)) {
-                    setMessages(data.messages);
-                }
+                if (!res.ok) throw new Error(data?.error || 'Unable to load messages.');
+                setMessages(Array.isArray(data.messages) ? data.messages : []);
+            } catch (loadError) {
+                setError(loadError instanceof Error ? loadError.message : 'Unable to load messages.');
             } finally {
                 setLoading(false);
             }
         };
 
         void loadMessages();
-    }, [conversationId, ensureConversation]);
+    }, [ensureConversation]);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -87,7 +91,7 @@ export const PsychologistChat: React.FC<PsychologistChatProps> = ({
 
     const sendMessage = async () => {
         const trimmed = input.trim();
-        if (!trimmed || !conversationId) return;
+        if (!trimmed || !conversationId || sending) return;
 
         const optimistic: ChatMessageType = {
             id: `temp_${Date.now()}`,
@@ -99,16 +103,24 @@ export const PsychologistChat: React.FC<PsychologistChatProps> = ({
 
         setMessages(prev => [...prev, optimistic]);
         setInput('');
+        setSending(true);
+        setError('');
 
-        const res = await fetch(`/api/conversations/${conversationId}/messages`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-            body: JSON.stringify({ text: trimmed }),
-        });
-
-        const data = await res.json();
-        if (res.ok && data?.message) {
-            setMessages(prev => prev.filter(item => item.id !== optimistic.id).concat({ ...data.message, content: data.message.content || trimmed }));
+        try {
+            const res = await fetch(`/api/conversations/${conversationId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ text: trimmed }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data?.message) throw new Error(data?.error || 'Unable to send message.');
+            setMessages(prev => prev.filter(item => item.id !== optimistic.id).concat(data.message));
+        } catch (sendError) {
+            setMessages(prev => prev.filter(item => item.id !== optimistic.id));
+            setInput(trimmed);
+            setError(sendError instanceof Error ? sendError.message : 'Unable to send message.');
+        } finally {
+            setSending(false);
         }
     };
 
@@ -154,6 +166,8 @@ export const PsychologistChat: React.FC<PsychologistChatProps> = ({
                 <div ref={bottomRef} />
             </div>
 
+            {error && <p className="border-t border-rose-900/60 bg-rose-950/40 px-4 py-2 text-xs text-rose-300">{error}</p>}
+
             <div className="bg-slate-950/80 px-4 py-3">
                 <div className="mb-2 flex items-center gap-2 text-[10px] text-slate-500">
                     <Clock3 className="h-3 w-3" />
@@ -164,7 +178,7 @@ export const PsychologistChat: React.FC<PsychologistChatProps> = ({
                     onChange={setInput}
                     onSend={sendMessage}
                     placeholder={isPsychologistView ? 'Type a message to the employee...' : 'Type your message...'}
-                    disabled={!conversationId || loading}
+                    disabled={!conversationId || loading || sending}
                 />
             </div>
 

@@ -44,19 +44,11 @@ const ROLES = {
 };
 
 // ============================================================
-// SEED PASSWORDS - ensure all DB users have hashed passwords
+// SEED RBAC ROLES - password hashes must be provisioned securely
 // ============================================================
 async function ensurePasswordsSeeded() {
     const db = getDb();
     let changed = false;
-
-    const seedPasswords = {
-        'usr_1': 'officer1234',
-        'usr_2': 'employee1234',
-        'usr_3': 'admin1234',
-        'usr_doc1': 'doctor1234',
-        'usr_doc2': 'doctor5678',
-    };
 
     // Map old roles to new RBAC roles
     const roleMap = {
@@ -69,11 +61,6 @@ async function ensurePasswordsSeeded() {
         // Assign rbacRole from old role
         if (!user.rbacRole && roleMap[user.role]) {
             user.rbacRole = roleMap[user.role];
-            changed = true;
-        }
-        // Hash password if not set
-        if (!user.passwordHash && seedPasswords[user.id]) {
-            user.passwordHash = await bcrypt.hash(seedPasswords[user.id], 10);
             changed = true;
         }
     }
@@ -125,18 +112,13 @@ app.post('/api/auth/organization/login', async (req, res) => {
             return res.status(401).json({ success: false, error: 'Invalid credentials.' });
         }
     }
-    // (For demo: if no passwordHash yet, allow with preset password)
-    else if (password !== 'admin1234') {
+    else {
         return res.status(401).json({ success: false, error: 'Invalid credentials.' });
     }
 
-    // Validate org if provided
-    let org = null;
-    if (orgId) {
-        org = findOrganization(orgId);
-    }
-    if (!org) {
-        org = db.organizations.find(o => o.id === user.orgId) || db.organizations[0];
+    const org = db.organizations.find(item => item.id === user.orgId);
+    if (!org || (orgId && findOrganization(orgId)?.id !== user.orgId)) {
+        return res.status(403).json({ success: false, error: 'Account is not assigned to the requested organization.' });
     }
 
     // Ensure rbacRole
@@ -182,21 +164,17 @@ app.post('/api/auth/user/login', async (req, res) => {
         if (!valid) {
             return res.status(401).json({ success: false, error: 'Invalid credentials.' });
         }
-    } else if (password !== 'officer1234' && password !== 'employee1234') {
+    } else {
         return res.status(401).json({ success: false, error: 'Invalid credentials.' });
     }
 
-    // Validate org
-    let org = null;
-    if (orgId) {
-        org = findOrganization(orgId);
-        if (!org) {
-            return res.status(400).json({ success: false, error: 'Invalid Organization ID or Code.' });
-        }
-        user.orgId = org.id;
-        saveDb(db);
+    const requestedOrg = orgId ? findOrganization(orgId) : null;
+    if (orgId && !requestedOrg) return res.status(400).json({ success: false, error: 'Invalid Organization ID or Code.' });
+    if (requestedOrg && requestedOrg.id !== user.orgId) {
+        return res.status(403).json({ success: false, error: 'Account is not assigned to the requested organization.' });
     }
-    const userOrg = db.organizations.find(o => o.id === user.orgId) || db.organizations[0];
+    const userOrg = db.organizations.find(o => o.id === user.orgId);
+    if (!userOrg) return res.status(403).json({ success: false, error: 'Account organization is not configured.' });
 
     user.rbacRole = ROLES.USER;
 
@@ -293,17 +271,17 @@ app.post('/api/auth/psychologist/login', async (req, res) => {
         if (!valid) {
             return res.status(401).json({ success: false, error: 'Invalid credentials.' });
         }
-    } else if (password !== 'doctor1234' && password !== 'doctor5678') {
+    } else {
         return res.status(401).json({ success: false, error: 'Invalid credentials.' });
     }
 
-    let org = null;
-    if (orgId) {
-        org = findOrganization(orgId);
+    const requestedOrg = orgId ? findOrganization(orgId) : null;
+    if (orgId && !requestedOrg) return res.status(400).json({ success: false, error: 'Invalid Organization ID or Code.' });
+    if (requestedOrg && requestedOrg.id !== user.orgId) {
+        return res.status(403).json({ success: false, error: 'Account is not assigned to the requested organization.' });
     }
-    if (!org) {
-        org = db.organizations.find(o => o.id === user.orgId) || db.organizations[0];
-    }
+    const org = db.organizations.find(o => o.id === user.orgId);
+    if (!org) return res.status(403).json({ success: false, error: 'Account organization is not configured.' });
 
     user.rbacRole = ROLES.PSYCHOLOGIST;
 
@@ -485,32 +463,32 @@ app.get('/api/consultations/user', requireAuth, requireRole([ROLES.USER, ROLES.P
     res.json({ consultations });
 });
 
-app.post('/api/consultations/request', requireAuth, requireRole([ROLES.USER, ROLES.PSYCHOLOGIST]), (req, res) => {
-    const { doctorId, reason, consultationType = 'audio' } = req.body;
+app.post('/api/consultations/request', requireAuth, requireRole(ROLES.USER), (req, res) => {
+    const { doctorId, reason } = req.body;
     const db = getDb();
-
-    if (consultationType && consultationType.toLowerCase() !== 'audio') {
-        return res.status(400).json({ success: false, error: 'Only audio consultations are supported for this service.' });
-    }
-
-    const targetDocId = doctorId || 'usr_doc1';
+    const targetDocId = doctorId;
     const uid = req.user.id;
     const now = new Date().toISOString();
+    const doctor = db.users.find(user => user.id === targetDocId && (user.rbacRole === ROLES.PSYCHOLOGIST || user.role === 'doctor'));
+    if (!doctor || doctor.orgId !== req.user.orgId) {
+        return res.status(403).json({ success: false, error: 'Selected psychologist is not available for your organization.' });
+    }
+    if (typeof reason !== 'string' || reason.trim().length < 1 || reason.length > 2000) {
+        return res.status(400).json({ success: false, error: 'A consultation reason between 1 and 2000 characters is required.' });
+    }
 
     const newConsultation = {
         id: `cons_${Date.now()}`,
         userId: uid,
         doctorId: targetDocId,
         status: 'REQUESTED',
-        consultationType: 'audio',
-        roomId: null,
+        consultationType: 'text',
         requested_at: now,
         accepted_at: null,
         started_at: null,
         ended_at: null,
-        duration: null,
         scheduledTime: null,
-        reason: reason || 'Routine mental well-being check and fatigue management consultation.',
+        reason: reason.trim(),
         doctorNotes: 'Pending physician review.',
         followUpAction: '',
         created_at: now,
@@ -520,17 +498,7 @@ app.post('/api/consultations/request', requireAuth, requireRole([ROLES.USER, ROL
     db.consultations.unshift(newConsultation);
     saveDb(db);
 
-    const user = db.users.find(u => u.id === uid);
-    addAuditLog(uid, 'CREATE_CONSULTATION_REQUEST', newConsultation.id, `Requested audio consultation with doctor ${targetDocId}.`);
-
-    const payload = {
-        consultation: newConsultation,
-        userName: user ? user.name : 'Officer',
-        doctorId: targetDocId,
-        type: 'audio',
-        roomId: newConsultation.roomId,
-        consultationType: 'audio'
-    };
+    addAuditLog(uid, 'CREATE_CONSULTATION_REQUEST', newConsultation.id, `Requested private psychologist consultation with doctor ${targetDocId}.`);
 
     res.json({ success: true, consultation: newConsultation });
 });
@@ -562,7 +530,6 @@ app.post('/api/ai/chat', requireAuth, requireRole([ROLES.USER, ROLES.PSYCHOLOGIS
             reply: aiResult.responseText || aiResult.reply || 'I am here for you, warrior. Please tell me what troubles your heart.',
             sentiment: 'neutral',
             mood: aiResult.emotion || 'calm',
-            audio: null
         });
     } catch (err) {
         console.error('Local ABIMANYU AI error:', err.message);
@@ -570,7 +537,6 @@ app.post('/api/ai/chat', requireAuth, requireRole([ROLES.USER, ROLES.PSYCHOLOGIS
             reply: "I'm here for you. Please take a deep breath — the connection to my guidance was briefly interrupted. Please try again.",
             sentiment: 'neutral',
             mood: 'calm',
-            audio: null
         });
     }
 });
@@ -716,14 +682,14 @@ app.post('/api/consultations/:id/accept', requireAuth, requireRole(ROLES.PSYCHOL
     }
 
     cons.status = 'ACCEPTED';
-    cons.consultationType = cons.consultationType || 'audio';
+    cons.consultationType = 'text';
     cons.accepted_at = new Date().toISOString();
     cons.updated_at = new Date().toISOString();
     saveDb(db);
 
-    addAuditLog(req.user.id, 'ACCEPT_CONSULTATION', cons.id, `Accepted audio consultation request ${cons.id}. Room: ${cons.roomId}.`);
+    addAuditLog(req.user.id, 'ACCEPT_CONSULTATION', cons.id, `Accepted private psychologist consultation request ${cons.id}.`);
 
-    res.json({ success: true, consultation: cons, roomId: cons.roomId, consultationType: cons.consultationType || 'audio' });
+    res.json({ success: true, consultation: cons, consultationType: 'text' });
 });
 
 app.post('/api/consultations/:id/reject', requireAuth, requireRole(ROLES.PSYCHOLOGIST), (req, res) => {
@@ -769,7 +735,6 @@ app.post('/api/consultations/:id/start', requireAuth, requireRole([ROLES.PSYCHOL
 
 app.post('/api/consultations/:id/end', requireAuth, requireRole([ROLES.PSYCHOLOGIST, ROLES.USER]), (req, res) => {
     const { id } = req.params;
-    const { duration } = req.body;
     const db = getDb();
 
     const cons = db.consultations.find(c => c.id === id);
@@ -782,11 +747,10 @@ app.post('/api/consultations/:id/end', requireAuth, requireRole([ROLES.PSYCHOLOG
 
     cons.status = 'COMPLETED';
     cons.ended_at = new Date().toISOString();
-    if (duration !== undefined) cons.duration = duration;
     cons.updated_at = new Date().toISOString();
     saveDb(db);
 
-    addAuditLog(uid, 'END_CONSULTATION', cons.id, `Consultation ${cons.id} ended. Duration: ${duration || 'N/A'}.`);
+    addAuditLog(uid, 'END_CONSULTATION', cons.id, `Consultation ${cons.id} was closed.`);
     res.json({ success: true, consultation: cons });
 });
 
@@ -849,7 +813,7 @@ app.get('/api/consultations/:id/notes', requireAuth, requireRole(ROLES.PSYCHOLOG
 
 // Gemini clinical report - PSYCHOLOGIST only
 app.post('/api/doctor/generate-report', requireAuth, requireRole(ROLES.PSYCHOLOGIST), async (req, res) => {
-    const { patientId, apiKey } = req.body;
+    const { patientId } = req.body;
     const db = getDb();
     const doctorId = req.user.id;
 
@@ -865,7 +829,7 @@ app.post('/api/doctor/generate-report', requireAuth, requireRole(ROLES.PSYCHOLOG
 
     addAuditLog(doctorId, 'GENERATE_GEMINI_CLINICAL_REPORT', patient.id, `Psychologist generated Gemini AI Structured Clinical Report for Officer ${patient.name}.`);
 
-    const result = await generateGeminiClinicalReport(patient, userCheckins, riskEval, apiKey);
+    const result = await generateGeminiClinicalReport(patient, userCheckins, riskEval);
     const { passwordHash: ph, ...safePatient } = patient;
     res.json({
         success: true,
@@ -931,24 +895,27 @@ app.get('/api/company/personnel-stress', requireAuth, requireRole(ROLES.ORGANIZA
 
     const orgUsers = db.users.filter(u => u.orgId === orgId && (u.role === 'user_employee' || u.rbacRole === ROLES.USER));
 
-    const personnel = orgUsers.map(u => {
-        const checkins = db.wellbeingCheckins.filter(c => c.userId === u.id);
-        const latest = checkins[checkins.length - 1] || {};
-        const evalResult = evaluateCheckinRisk(latest, checkins, u.baseline);
+    const personnel = db.departments
+        .filter(department => department.orgId === orgId)
+        .map(department => {
+            const departmentUsers = orgUsers.filter(user => user.deptId === department.id);
+            const scores = departmentUsers.map(user => {
+                const checkins = db.wellbeingCheckins.filter(checkin => checkin.userId === user.id);
+                return evaluateCheckinRisk(checkins[checkins.length - 1] || {}, checkins, user.baseline).score;
+            });
+            const averageRiskScore = scores.length
+                ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+                : 0;
+            return {
+                id: department.id,
+                name: department.name,
+                employeeCount: departmentUsers.length,
+                averageRiskScore,
+                riskLevel: averageRiskScore >= 75 ? 'RED' : averageRiskScore >= 60 ? 'ORANGE' : averageRiskScore >= 40 ? 'YELLOW' : 'GREEN'
+            };
+        });
 
-        return {
-            id: u.id,
-            name: u.name,
-            title: u.title,
-            avatar: u.avatar || '',
-            departmentId: u.deptId,
-            riskLevel: evalResult.level,
-            riskScore: evalResult.score,
-            latestCheckinDate: latest.date || 'Never'
-        };
-    });
-
-    addAuditLog(req.user.id, 'VIEW_PERSONNEL_STRESS', orgId, 'Organization Officer fetched individual personnel stress data.');
+    addAuditLog(req.user.id, 'VIEW_AGGREGATED_DEPARTMENT_STRESS', orgId, 'Organization Officer fetched department-level aggregate stress data.');
     res.json({ personnel });
 });
 
@@ -994,44 +961,6 @@ app.get('/api/company/alerts', requireAuth, requireRole(ROLES.ORGANIZATION_OFFIC
 app.get('/api/company/audit-logs', requireAuth, requireRole(ROLES.ORGANIZATION_OFFICER), (req, res) => {
     const db = getDb();
     res.json({ logs: db.auditLogs.slice(0, 100) });
-});
-
-// ============================================================
-// SHARED PROTECTED APIs (PSYCHOLOGIST + USER for calls)
-// ============================================================
-
-app.post('/api/calls/:consultationId/join', requireAuth, (req, res) => {
-    const { consultationId } = req.params;
-    const db = getDb();
-
-    const cons = db.consultations.find(c => c.id === consultationId);
-    if (!cons) return res.status(404).json({ error: 'Consultation not found' });
-
-    const requesterId = req.user.id;
-    if (requesterId !== cons.userId && requesterId !== cons.doctorId) {
-        return res.status(403).json({ error: '403 Forbidden: You are not authorized for this consultation.' });
-    }
-
-    if (cons.status !== 'ACCEPTED' && cons.status !== 'IN_PROGRESS') {
-        return res.status(403).json({ error: '403 Forbidden: Audio consultation is not yet accepted by the psychologist.' });
-    }
-
-    if (cons.consultationType && cons.consultationType.toLowerCase() !== 'audio') {
-        return res.status(400).json({ error: 'This consultation is not configured for audio calling.' });
-    }
-
-    const roomToken = cons.roomId || `room_${consultationId}`;
-    cons.roomId = roomToken;
-    saveDb(db);
-    addAuditLog(requesterId, 'JOIN_CALL_SESSION', consultationId, `Participant ${requesterId} authorized to join confidential room ${roomToken}.`);
-
-    res.json({
-        success: true,
-        consultation: cons,
-        room: roomToken,
-        roomId: roomToken,
-        consultationType: 'audio'
-    });
 });
 
 // ============================================================

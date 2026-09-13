@@ -65,8 +65,8 @@ How are you feeling physically right now? Is there a particular aspect of your c
 /**
  * Generates a structured Clinical & Psychological Report using Google Gemini API for the Doctor Platform.
  */
-export async function generateGeminiClinicalReport(user, checkins = [], riskEval = null, apiKeyOverride = null) {
-    const apiKey = apiKeyOverride || process.env.GEMINI_API_KEY || 'AQ.Ab8RN6ICsngn6sM7h2F3MLYx76T6uHAti2EeifVdieiz5mYCTw';
+export async function generateGeminiClinicalReport(user, checkins = [], riskEval = null) {
+    const apiKey = process.env.GEMINI_API_KEY;
 
     const recentLogs = checkins.slice(-7).map(c => `[Date: ${c.date}] Stress: ${c.stressLevel}/10, Fatigue: ${c.fatigue}/10, Sleep: ${c.sleepHours}h, Workload: ${c.workloadHours || 8}h, Score: ${c.score}. Journal: "${c.journal || 'None'}"`).join('\n');
 
@@ -93,7 +93,7 @@ Provide a strictly structured JSON response containing the following exact keys:
 
 Respond ONLY with valid JSON. Do not include markdown code block backticks if possible, or format as pure JSON.`;
 
-    try {
+    if (apiKey) try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
         const response = await fetch(url, {
             method: 'POST',

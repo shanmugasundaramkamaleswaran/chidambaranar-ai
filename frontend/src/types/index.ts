@@ -125,7 +125,6 @@ export interface Consultation {
     accepted_at?: string | null;
     started_at?: string | null;
     ended_at?: string | null;
-    duration?: number | string | null;
     requestDate?: string;
     scheduledTime?: string | null;
     reason: string;
@@ -138,7 +137,6 @@ export interface Consultation {
     doctorTitle?: string;
     doctorAvatar?: string;
     doctorSpecialty?: string;
-    roomId?: string | null;
     notes?: ConsultationNote | null;
     created_at?: string;
     updated_at?: string;

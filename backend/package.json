@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test": "echo \"No backend tests configured\" && exit 0"
+    "test": "node src/services/messages.service.test.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
