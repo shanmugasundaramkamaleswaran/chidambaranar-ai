@@ -1,44 +1,22 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
-import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { Server } from 'socket.io';
 import { getDb, saveDb, addAuditLog, findOrganization } from './db.js';
 import { evaluateCheckinRisk, calculatePersonalBaseline } from './stressEngine.js';
 import { generateAiChatResponse, generateGeminiClinicalReport } from './aiAssistant.js';
 import { signToken, requireAuth, requireRole } from './auth.js';
 import { getAbimanyuResponse } from './abimanyu.js';
+import messagesRouter from './routes/messages.routes.js';
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: {
-        origin: '*',
-        methods: ['GET', 'POST', 'PUT', 'DELETE']
-    }
-});
 
 const PORT = process.env.PORT || 5000;
-const AUDIO_CALL_SERVICE_URL = process.env.AUDIO_CALL_SERVICE_URL || 'https://chidambaranar-ai-call-support.onrender.com';
-
-const generateSecureRoomId = () => crypto.randomBytes(16).toString('hex');
-
-const emitConsultationUpdate = (consultation, eventName, payload = {}) => {
-    const base = {
-        consultationId: consultation.id,
-        consultation,
-        roomId: consultation.roomId,
-        status: consultation.status,
-        ...payload
-    };
-
-    io.to(`user_${consultation.userId}`).emit(eventName, base);
-    io.to(`user_${consultation.doctorId}`).emit(eventName, base);
-};
 
 app.use(cors());
 app.use(express.json());
+app.use('/api', messagesRouter);
 
 app.get('/', (req, res) => {
     res.json({
@@ -49,20 +27,6 @@ app.get('/', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
-
-// STUN / TURN server configuration structure
-const getIceServers = () => {
-    return [
-        {
-            urls: process.env.STUN_URL || 'stun:stun.l.google.com:19302'
-        },
-        ...(process.env.TURN_URL ? [{
-            urls: process.env.TURN_URL,
-            username: process.env.TURN_USERNAME || '',
-            credential: process.env.TURN_CREDENTIAL || ''
-        }] : [])
-    ];
-};
 
 // Logger Middleware
 app.use((req, res, next) => {

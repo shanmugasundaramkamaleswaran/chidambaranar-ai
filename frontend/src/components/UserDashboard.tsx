@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { io } from 'socket.io-client';
 import { User, WellbeingCheckin, RiskEvaluation, Organization, Consultation } from '../types';
 import { saveCheckinToCloudStorage } from '../firebase';
-import { ShieldAlert, Heart, Plus, Sparkles, CheckCircle2, Lock, Send, Building2, PhoneCall, Stethoscope, History, Phone } from 'lucide-react';
+import { ShieldAlert, Heart, Plus, Sparkles, CheckCircle2, Lock, Send, Building2, Stethoscope, History, MessageSquare } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { VoiceCallModal } from './VoiceCallModal';
 import { PsychologistSelectModal } from './PsychologistSelectModal';
 import { CallHistoryModal } from './CallHistoryModal';
+import { PsychologistChat } from './chat/PsychologistChat';
 import { getAuthHeader } from '../auth';
 
 interface UserDashboardProps {
@@ -19,11 +18,13 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
     const [checkins, setCheckins] = useState<WellbeingCheckin[]>([]);
     const [latestEval, setLatestEval] = useState<RiskEvaluation | null>(null);
 
-    // Consultation & WebRTC Voice Call States
+    // Consultation state
     const [userConsultations, setUserConsultations] = useState<Consultation[]>([]);
-    const [activeCallConsultation, setActiveCallConsultation] = useState<Consultation | null>(null);
     const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [psychologistChatOpen, setPsychologistChatOpen] = useState(false);
+    const [selectedPsychologistId, setSelectedPsychologistId] = useState<string | null>(null);
+    const [selectedPsychologistName, setSelectedPsychologistName] = useState('Psychologist');
     const [incomingNotification, setIncomingNotification] = useState<{ consultationId: string; doctorName: string } | null>(null);
 
     // Daily Check-in Modal State
@@ -73,59 +74,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
 
     useEffect(() => {
         fetchDashboardData();
-
-        const audioCallUrl = (import.meta.env.VITE_AUDIO_CALL_URL || 'https://chidambaranar-ai-call-support.onrender.com').replace(/\/$/, '');
-        const socket = io(audioCallUrl, {
-            transports: ['websocket', 'polling'],
-            reconnection: true,
-            timeout: 20000,
-            auth: {
-                token: getAuthHeader().Authorization?.replace('Bearer ', '') || ''
-            }
-        });
-
-        socket.on('connect', () => {
-            socket.emit('user:register', { userId: user.id, name: user.name, role: 'USER' });
-        });
-
-        socket.on('consultation:accepted', ({ consultationId, doctorName, roomId, consultation }) => {
-            const matchingConsultation = consultation || userConsultations.find(c => c.id === consultationId) || null;
-            if (matchingConsultation) {
-                setActiveCallConsultation({ ...matchingConsultation, status: 'ACCEPTED', roomId: roomId || matchingConsultation.roomId } as Consultation);
-            }
-            setIncomingNotification({ consultationId, doctorName: doctorName || matchingConsultation?.doctorName || 'Psychologist' });
-            setUserConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, status: 'ACCEPTED', roomId: roomId || c.roomId } : c));
-            fetchDashboardData();
-        });
-
-        socket.on('consultation-requested', ({ consultation }) => {
-            setUserConsultations(prev => {
-                if (!consultation) return prev;
-                const existing = prev.find(c => c.id === consultation.id);
-                if (existing) return prev.map(c => c.id === consultation.id ? { ...existing, status: consultation.status } : c);
-                return [consultation, ...prev];
-            });
-        });
-
-        socket.on('consultation:rejected', ({ consultationId }) => {
-            setUserConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, status: 'REJECTED' } : c));
-            setIncomingNotification(null);
-        });
-
-        socket.on('call-ready', ({ consultationId, roomId }) => {
-            setUserConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, roomId, status: 'ACCEPTED' } : c));
-            fetchDashboardData();
-        });
-
-        socket.on('call:ended', ({ consultationId }) => {
-            setUserConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, status: 'COMPLETED' } : c));
-            setIncomingNotification(null);
-            setActiveCallConsultation(null);
-        });
-
-        return () => {
-            socket.disconnect();
-        };
     }, [user.id, user.name]);
 
     // Submit New Daily Check-In
@@ -296,11 +244,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
 
                 <div className="flex flex-wrap items-center gap-3">
                     <button
-                        onClick={() => setIsSelectModalOpen(true)}
+                        onClick={() => {
+                            setSelectedPsychologistId('usr_doc1');
+                            setSelectedPsychologistName('Dr. Sarah Connor');
+                            setPsychologistChatOpen(true);
+                        }}
                         className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs shadow-lg shadow-emerald-950/60 border border-emerald-400/30 transition-all hover:scale-[1.02]"
                     >
-                        <PhoneCall className="w-4 h-4" />
-                        <span>Talk to Psychologist</span>
+                        <MessageSquare className="w-4 h-4" />
+                        <span>Chat with Psychologist</span>
                     </button>
 
                     <button
@@ -329,17 +281,16 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                 </div>
             </div>
 
-            {/* REAL-TIME CALL ACCEPTED NOTIFICATION TOAST BANNER */}
             {incomingNotification && (
                 <div className="p-5 rounded-3xl bg-emerald-950/90 border border-emerald-500/80 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-300">
                     <div className="flex items-center gap-3.5">
                         <div className="p-3 rounded-2xl bg-emerald-500 text-slate-950 font-bold animate-bounce">
-                            <Phone className="w-6 h-6" />
+                            <MessageSquare className="w-6 h-6" />
                         </div>
                         <div>
-                            <h4 className="text-sm font-bold text-white">Psychologist Consultation Ready!</h4>
+                            <h4 className="text-sm font-bold text-white">Psychologist message available</h4>
                             <p className="text-xs text-emerald-200 mt-0.5">
-                                {incomingNotification.doctorName} accepted your voice consultation request.
+                                {incomingNotification.doctorName} has replied in your secure message thread.
                             </p>
                         </div>
                     </div>
@@ -352,21 +303,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                         </button>
                         <button
                             onClick={() => {
-                                const cons = userConsultations.find(c => c.id === incomingNotification.consultationId) || {
-                                    id: incomingNotification.consultationId,
-                                    userId: user.id,
-                                    doctorId: 'usr_doc1',
-                                    status: 'ACCEPTED',
-                                    reason: 'Real-time Voice Consultation',
-                                    doctorName: incomingNotification.doctorName
-                                };
-                                setActiveCallConsultation(cons as Consultation);
+                                setSelectedPsychologistId('usr_doc1');
+                                setSelectedPsychologistName(incomingNotification.doctorName || 'Dr. Sarah Connor');
+                                setPsychologistChatOpen(true);
                                 setIncomingNotification(null);
                             }}
                             className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-950 flex items-center gap-2"
                         >
-                            <PhoneCall className="w-4 h-4" />
-                            <span>Join Voice Call Now</span>
+                            <MessageSquare className="w-4 h-4" />
+                            <span>Open Chat</span>
                         </button>
                     </div>
                 </div>
@@ -685,26 +630,29 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, organization
                 </div>
             )}
 
-            {/* VOICE CALL MODAL */}
-            {activeCallConsultation && (
-                <VoiceCallModal
-                    consultation={activeCallConsultation}
-                    currentUser={user}
-                    onClose={() => setActiveCallConsultation(null)}
-                    onCallEnded={(duration) => {
-                        setActiveCallConsultation(null);
-                        fetchDashboardData();
-                    }}
-                />
+            {psychologistChatOpen && selectedPsychologistId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+                    <PsychologistChat
+                        currentUser={{ id: user.id, name: user.name, role: 'USER' }}
+                        psychologistId={selectedPsychologistId}
+                        employeeId={user.id}
+                        employeeName={user.name}
+                        psychologistName={selectedPsychologistName}
+                        isPsychologistView={false}
+                        onClose={() => setPsychologistChatOpen(false)}
+                    />
+                </div>
             )}
 
-            {/* SELECT PSYCHOLOGIST MODAL */}
             {isSelectModalOpen && (
                 <PsychologistSelectModal
                     currentUser={user}
                     onClose={() => setIsSelectModalOpen(false)}
                     onRequestSent={(newConsultation) => {
+                        setSelectedPsychologistId(newConsultation?.doctorId || 'usr_doc1');
+                        setSelectedPsychologistName(newConsultation?.doctorName || 'Psychologist');
                         setIsSelectModalOpen(false);
+                        setPsychologistChatOpen(true);
                         fetchDashboardData();
                     }}
                 />

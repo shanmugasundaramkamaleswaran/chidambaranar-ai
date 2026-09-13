@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { io } from 'socket.io-client';
 import { User, Consultation, WellbeingCheckin, RiskEvaluation, Organization } from '../types';
-import { Stethoscope, UserCheck, AlertTriangle, Calendar, Clock, CheckCircle2, FileText, Lock, ChevronRight, ShieldCheck, UserX, MessageSquare, Plus, Building2, PhoneCall, Mic, History, XCircle, Volume2, Sparkles } from 'lucide-react';
+import { Stethoscope, UserCheck, AlertTriangle, Calendar, Clock, CheckCircle2, FileText, Lock, ChevronRight, ShieldCheck, UserX, MessageSquare, Plus, Building2, History, XCircle, Sparkles } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { VoiceCallModal } from './VoiceCallModal';
 import { PsychologistNotesModal } from './PsychologistNotesModal';
 import { CallHistoryModal } from './CallHistoryModal';
+import { PsychologistChat } from './chat/PsychologistChat';
 import { getAuthHeader } from '../auth';
 
 interface DoctorDashboardProps {
@@ -29,14 +28,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
     const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
     const [selectedPatientDetails, setSelectedPatientDetails] = useState<any>(null);
 
-    // Doctor Availability & WebRTC Call Modal States
+    // Doctor availability state
     const [availabilityStatus, setAvailabilityStatus] = useState<'AVAILABLE' | 'BUSY' | 'OFFLINE'>(
         (doctor as any).availabilityStatus || 'AVAILABLE'
     );
-    const [activeCallConsultation, setActiveCallConsultation] = useState<Consultation | null>(null);
     const [activeNotesConsultation, setActiveNotesConsultation] = useState<Consultation | null>(null);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-    const [incomingCallRequest, setIncomingCallRequest] = useState<any | null>(null);
+    const [activeTextChat, setActiveTextChat] = useState<{ employeeId: string; employeeName: string } | null>(null);
 
     // AI Report State
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -88,57 +86,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
 
     useEffect(() => {
         fetchDoctorData();
-
-        const audioCallUrl = (import.meta.env.VITE_AUDIO_CALL_URL || 'https://chidambaranar-ai-call-support.onrender.com').replace(/\/$/, '');
-        const socket = io(audioCallUrl, {
-            transports: ['websocket', 'polling'],
-            reconnection: true,
-            timeout: 20000,
-            auth: {
-                token: getAuthHeader().Authorization?.replace('Bearer ', '') || ''
-            }
-        });
-
-        socket.on('connect', () => {
-            socket.emit('user:register', { userId: doctor.id, name: doctor.name, role: 'PSYCHOLOGIST' });
-        });
-
-        socket.on('consultation:request', (data) => {
-            const normalized = {
-                ...data,
-                consultationId: data?.consultation?.id || data?.consultationId,
-                userName: data?.userName || data?.fromName || data?.consultation?.userName || 'Officer',
-                reason: data?.reason || data?.consultation?.reason || 'Confidential audio consultation request'
-            };
-            setIncomingCallRequest(normalized);
-            fetchDoctorData();
-        });
-
-        socket.on('consultation-requested', (data) => {
-            const normalized = {
-                ...data,
-                consultationId: data?.consultation?.id || data?.consultationId,
-                userName: data?.userName || data?.fromName || data?.consultation?.userName || 'Officer',
-                reason: data?.reason || data?.consultation?.reason || 'Confidential audio consultation request'
-            };
-            setIncomingCallRequest(normalized);
-            fetchDoctorData();
-        });
-
-        socket.on('consultation:accepted', ({ consultationId, roomId, consultation }) => {
-            setActiveCallConsultation((prev) => prev || (consultation as Consultation) || null);
-            setConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, status: 'ACCEPTED', roomId: roomId || c.roomId } : c));
-        });
-
-        socket.on('call:ended', ({ consultationId }) => {
-            setActiveCallConsultation(null);
-            setIncomingCallRequest(null);
-            fetchDoctorData();
-        });
-
-        return () => {
-            socket.disconnect();
-        };
     }, [doctor.id, doctor.name]);
 
     // Handle updating availability status
@@ -229,62 +176,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
                 </div>
             </div>
 
-            {/* INCOMING CONSULTATION REQUEST REAL-TIME NOTIFICATION */}
-            {incomingCallRequest && (
-                <div className="p-5 rounded-3xl bg-amber-950/90 border border-amber-500/80 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-300">
-                    <div className="flex items-center gap-3.5">
-                        <div className="p-3 rounded-2xl bg-amber-500 text-slate-950 font-bold animate-bounce">
-                            <PhoneCall className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-bold text-white">Incoming Audio Consultation</h4>
-                            <p className="text-xs text-amber-200 mt-0.5">
-                                Officer {incomingCallRequest.userName} requested a confidential audio consultation.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                        <button
-                            onClick={() => setIncomingCallRequest(null)}
-                            className="px-3 py-2 rounded-xl bg-amber-900/60 hover:bg-amber-900 text-amber-300 text-xs font-semibold"
-                        >
-                            Dismiss
-                        </button>
-                        <button
-                            onClick={async () => {
-                                try {
-                                    const consultationId = incomingCallRequest?.consultationId || incomingCallRequest?.consultation?.id;
-                                    if (!consultationId) {
-                                        console.error('Missing consultationId for incoming request:', incomingCallRequest);
-                                        return;
-                                    }
-
-                                    const res = await fetch(`/api/consultations/${consultationId}/accept`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-                                        body: JSON.stringify({})
-                                    });
-
-                                    if (res.ok) {
-                                        const accepted = await res.json();
-                                        const activeConsultation = accepted?.consultation || { ...incomingCallRequest.consultation, id: consultationId };
-                                        setIncomingCallRequest(null);
-                                        setActiveCallConsultation(activeConsultation as Consultation);
-                                    }
-
-                                    fetchDoctorData();
-                                } catch (e) {
-                                    console.error(e);
-                                }
-                            }}
-                            className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-950 flex items-center gap-2"
-                        >
-                            <PhoneCall className="w-4 h-4" />
-                            <span>Accept Call</span>
-                        </button>
-                    </div>
-                </div>
-            )}
 
             {/* ASSIGNED PATIENTS ROSTER & CONSULTATION QUEUE GRID */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -414,11 +305,11 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
 
                                         {(c.status === 'ACCEPTED' || c.status === 'IN_PROGRESS') && (
                                             <button
-                                                onClick={() => setActiveCallConsultation(c)}
+                                                onClick={() => setActiveTextChat({ employeeId: c.userId, employeeName: c.userName || 'Officer' })}
                                                 className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-950 flex items-center gap-1.5"
                                             >
-                                                <PhoneCall className="w-3.5 h-3.5" />
-                                                <span>Join Voice Room</span>
+                                                <MessageSquare className="w-3.5 h-3.5" />
+                                                <span>Open Chat</span>
                                             </button>
                                         )}
 
@@ -562,17 +453,18 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ doctor, organi
                 </div>
             )}
 
-            {/* VOICE CALL MODAL */}
-            {activeCallConsultation && (
-                <VoiceCallModal
-                    consultation={activeCallConsultation}
-                    currentUser={doctor}
-                    onClose={() => setActiveCallConsultation(null)}
-                    onCallEnded={(duration) => {
-                        setActiveCallConsultation(null);
-                        fetchDoctorData();
-                    }}
-                />
+            {activeTextChat && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+                    <PsychologistChat
+                        currentUser={{ id: doctor.id, name: doctor.name, role: 'doctor' }}
+                        psychologistId={doctor.id}
+                        employeeId={activeTextChat.employeeId}
+                        employeeName={activeTextChat.employeeName}
+                        psychologistName={doctor.name}
+                        isPsychologistView={true}
+                        onClose={() => setActiveTextChat(null)}
+                    />
+                </div>
             )}
 
             {/* PSYCHOLOGIST CLINICAL NOTES MODAL */}

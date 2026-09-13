@@ -175,7 +175,9 @@ const initialData = {
         { id: 'log_1', timestamp: '2026-09-07T14:31:00Z', actorId: 'usr_1', action: 'CREATE_CONSULTATION_REQUEST', targetId: 'cons_101', details: 'User requested doctor consultation with Dr. Sarah Connor.' },
         { id: 'log_2', timestamp: '2026-09-07T10:15:00Z', actorId: 'usr_3', action: 'VIEW_AGGREGATED_ANALYTICS', targetId: 'org_1', details: 'Org Admin viewed anonymized department risk statistics.' },
         { id: 'log_3', timestamp: '2026-09-07T09:00:00Z', actorId: 'usr_doc1', action: 'VIEW_PATIENT_CLINICAL_SUMMARY', targetId: 'usr_1', details: 'Doctor Connor accessed authorized longitudinal stress data for Officer John Vance.' }
-    ]
+    ],
+    conversations: [],
+    messages: []
 };
 
 // Ensure database file exists with initial data
@@ -188,6 +190,8 @@ export function getDb() {
         const data = JSON.parse(raw);
         if (!data.consultations) data.consultations = [];
         if (!data.consultationNotes) data.consultationNotes = [];
+        if (!data.conversations) data.conversations = [];
+        if (!data.messages) data.messages = [];
         return data;
     } catch (err) {
         console.error('Error reading database file, re-initializing:', err);
