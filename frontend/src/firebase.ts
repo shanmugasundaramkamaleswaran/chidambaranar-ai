@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, collection, addDoc, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
-import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage, ref, uploadString } from 'firebase/storage';
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -13,20 +13,28 @@ const firebaseConfig = {
     vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
 };
 
-// Initialize Firebase App
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const firebaseConfigured = Object.values(firebaseConfig).every(value => typeof value === 'string' && value.trim().length > 0);
 
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+// Firebase is optional for the core portal. A missing Vercel Firebase configuration
+// must not prevent the authentication and dashboard UI from rendering.
+const app = firebaseConfigured
+    ? (!getApps().length ? initializeApp(firebaseConfig) : getApp())
+    : null;
+
+export const auth = app ? getAuth(app) : null;
+export const googleProvider = app ? new GoogleAuthProvider() : null;
+export const db = app ? getFirestore(app) : null;
+export const storage = app ? getStorage(app) : null;
 
 /**
  * Firebase Google Account Authentication
  */
 export async function signInWithGoogle() {
+    if (!auth) {
+        return { success: false, error: 'Firebase is not configured for this deployment.' };
+    }
     try {
-        const result = await signInWithPopup(auth, googleProvider);
+        const result = await signInWithPopup(auth, googleProvider!);
         const user = result.user;
         return {
             success: true,
@@ -60,6 +68,7 @@ export async function signInWithGoogle() {
  * Uploads check-in metrics to Firebase Cloud Storage Bucket
  */
 export async function saveCheckinToCloudStorage(userId: string, checkinData: any) {
+    if (!storage) return false;
     try {
         const storageRef = ref(storage, `checkins/${userId}/${Date.now()}.json`);
         await uploadString(storageRef, JSON.stringify(checkinData, null, 2), 'raw', {
